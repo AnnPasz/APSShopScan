@@ -158,13 +158,53 @@ body {
 
 .list-actions {
   display: flex;
-  gap: 0.6rem;
-  justify-content: flex-end;
+  gap: 0.5rem;
+  justify-content: flex-start;
   margin-bottom: 0.75rem;
 }
 
 .list-actions > button {
   flex: 0 0 auto;
+}
+
+.square-icon-btn {
+  width: 2.35rem;
+  min-width: 2.35rem;
+  min-height: 2.35rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(177, 189, 208, 0.5);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 4px 12px rgba(76, 96, 128, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  color: #5f6f88;
+  font-size: 0.95rem;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.square-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+}
+
+.square-icon-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(76, 96, 128, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.square-icon-btn.danger-btn {
+  color: #e05b66;
+  border-color: rgba(244, 186, 192, 0.75);
+  background: rgba(255, 244, 245, 0.9);
+}
+
+.square-icon-btn.danger-btn:hover {
+  background: rgba(255, 244, 245, 0.98);
 }
 
 .hero-card {

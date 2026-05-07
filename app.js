@@ -154,6 +154,12 @@ const state = {
   language: "pl"
 };
 
+const scannerAutoTrigger = {
+  usbTimeout: null,
+  minChars: 5,
+  triggerDelay: 180
+};
+
 const elements = {
   brandLabel: document.getElementById("brand-label"),
   appTitle: document.getElementById("app-title"),
@@ -218,6 +224,7 @@ function bindEvents() {
   elements.confirmScanCancelTop.addEventListener("click", clearPendingScannedItem);
   elements.usbFocusBtn.addEventListener("click", focusUsbInput);
   elements.usbScanInput.addEventListener("keydown", onUsbInputKeyDown);
+  elements.usbScanInput.addEventListener("input", onUsbInputChange);
 }
 
 function loadState() {
@@ -372,6 +379,47 @@ function focusUsbInput() {
   elements.usbScanInput.focus();
   elements.usbScanInput.select();
   setUsbStatus(t("usbReady"));
+}
+
+function onUsbInputChange(event) {
+  clearTimeout(scannerAutoTrigger.usbTimeout);
+  const value = elements.usbScanInput.value.trim();
+
+  if (value.length < scannerAutoTrigger.minChars) {
+    return;
+  }
+
+  if (!isValidEan(value) && !value.toUpperCase().startsWith("NOEAN:")) {
+    return;
+  }
+
+  scannerAutoTrigger.usbTimeout = setTimeout(async () => {
+    if (elements.usbScanInput.value.trim().length >= scannerAutoTrigger.minChars) {
+      simulateUsbEnter();
+    }
+  }, scannerAutoTrigger.triggerDelay);
+}
+
+async function simulateUsbEnter() {
+  const code = elements.usbScanInput.value.trim();
+  if (!code) {
+    return;
+  }
+
+  setUsbStatus(t("usbProcessing"));
+  const format = inferInputFormat(code);
+  const success = await handleScanResult(code, format, "usb");
+  elements.usbScanInput.value = "";
+
+  if (success && state.pendingScannedItem) {
+    openConfirmScanModal();
+  }
+
+  if (!success) {
+    focusUsbInput();
+  } else {
+    setUsbStatus(t("usbReady"));
+  }
 }
 
 async function onUsbInputKeyDown(event) {
