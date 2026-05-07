@@ -1,14 +1,15 @@
 :root {
-  color-scheme: light;
-  --bg: #edf0f8;
-  --panel: #ffffff;
-  --text: #202c3f;
-  --muted: #7684a0;
-  --primary: #b6ff2f;
-  --primary-strong: #9de61f;
-  --accent: #7f56ff;
-  --danger: #ef5f5f;
-  --ok: #2bb673;
+  color-scheme: dark;
+  --bg: #100f22;
+  --panel: #1a1b34;
+  --panel-soft: #232547;
+  --text: #eef1ff;
+  --muted: #9aa3c6;
+  --primary: #b9ff35;
+  --primary-strong: #9aeb14;
+  --accent: #7f5bff;
+  --danger: #ff6f86;
+  --ok: #45d88c;
 }
 
 * {
@@ -18,7 +19,7 @@
 
 body {
   margin: 0;
-  background: radial-gradient(circle at 10% 0%, #f5f7fd 0%, #e8edf7 45%, #e3e8f3 100%);
+  background: radial-gradient(circle at 8% 0%, #40307f 0%, #221f45 38%, #121127 100%);
   color: var(--text);
 }
 
@@ -26,14 +27,14 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
-  padding: 1.1rem 0.95rem 1.8rem;
+  padding: 1rem 0.95rem 2rem;
 }
 
 .app-header {
-  background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
-  border-radius: 1rem;
-  box-shadow: 0 16px 36px rgba(53, 73, 110, 0.12);
-  border: 1px solid #e4eaf5;
+  background: linear-gradient(160deg, #252553 0%, #1a1a35 100%);
+  border-radius: 1.15rem;
+  box-shadow: 0 16px 38px rgba(8, 9, 23, 0.6);
+  border: 1px solid rgba(164, 172, 255, 0.18);
   padding: 1rem;
   margin-bottom: 0.9rem;
 }
@@ -49,15 +50,15 @@ body {
   margin: 0;
   font-size: 0.72rem;
   font-weight: 800;
-  color: #d9a11f;
+  color: #ffc857;
   letter-spacing: 0.08em;
 }
 
 .lang-btn {
   width: 2.75rem;
   height: 2.75rem;
-  border: 1px solid #d5deef;
-  background: #eef3ff;
+  border: 1px solid rgba(167, 178, 248, 0.35);
+  background: rgba(149, 160, 235, 0.18);
   border-radius: 999px;
   cursor: pointer;
   font-size: 1.2rem;
@@ -72,6 +73,9 @@ body {
 .top-nav {
   display: flex;
   gap: 0.5rem;
+  background: rgba(137, 149, 223, 0.12);
+  border-radius: 0.95rem;
+  padding: 0.25rem;
 }
 
 .nav-btn,
@@ -87,19 +91,19 @@ body {
 
 .nav-btn {
   flex: 1;
-  background: #eceff8;
-  color: #5f6f89;
+  background: transparent;
+  color: #95a1cb;
   font-weight: 600;
 }
 
 .nav-btn.active {
-  background: linear-gradient(135deg, #ffd44f 0%, #ffbd2f 100%);
-  color: #513600;
+  background: linear-gradient(135deg, #c8ff55 0%, #a9ef27 100%);
+  color: #20300c;
 }
 
 .primary-btn {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
-  color: #2f3a12;
+  color: #1f2c0d;
   font-weight: 600;
   box-shadow: 0 10px 22px rgba(150, 214, 33, 0.24);
 }
@@ -109,28 +113,28 @@ body {
 }
 
 .ghost-btn {
-  background: #eff3fb;
-  color: #5e6d86;
-  border: 1px solid #d8e0ef;
+  background: rgba(132, 146, 222, 0.16);
+  color: #b3bce1;
+  border: 1px solid rgba(161, 172, 234, 0.3);
 }
 
 .small-btn {
-  background: #f1f5fb;
-  color: #5e6b80;
+  background: rgba(131, 148, 218, 0.18);
+  color: #c4cceb;
   padding: 0.35rem 0.65rem;
-  border: 1px solid #dce5f2;
+  border: 1px solid rgba(161, 173, 235, 0.35);
 }
 
 .small-btn.danger {
-  background: #fff2f2;
-  color: #db4f4f;
-  border-color: #ffd8d8;
+  background: rgba(255, 112, 135, 0.14);
+  color: #ff88a0;
+  border-color: rgba(255, 138, 159, 0.38);
 }
 
 .small-btn.ok {
-  background: #ebfff3;
-  color: #279860;
-  border-color: #c9efd9;
+  background: rgba(125, 255, 158, 0.14);
+  color: #90efad;
+  border-color: rgba(124, 255, 169, 0.35);
 }
 
 .small-btn[disabled] {
@@ -178,10 +182,10 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 0.55rem;
-  border: 1px solid rgba(177, 189, 208, 0.5);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 6px 14px rgba(70, 91, 128, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  color: #5f6f88;
+  border: 1px solid rgba(175, 188, 255, 0.35);
+  background: rgba(116, 126, 198, 0.22);
+  box-shadow: 0 8px 16px rgba(8, 10, 30, 0.45), inset 0 1px 0 rgba(195, 205, 255, 0.2);
+  color: #c5cdf1;
   font-size: 0.95rem;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -190,28 +194,28 @@ body {
 }
 
 .square-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(130, 143, 214, 0.3);
   transform: translateY(-1px);
 }
 
 .square-icon-btn:active {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(76, 96, 128, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  box-shadow: 0 3px 10px rgba(8, 10, 30, 0.5), inset 0 1px 0 rgba(195, 205, 255, 0.18);
 }
 
 .square-icon-btn.danger-btn {
-  color: #e05b66;
-  border-color: rgba(244, 186, 192, 0.75);
-  background: rgba(255, 244, 245, 0.9);
+  color: #ff8da1;
+  border-color: rgba(255, 142, 165, 0.45);
+  background: rgba(255, 112, 135, 0.12);
 }
 
 .square-icon-btn.danger-btn:hover {
-  background: rgba(255, 244, 245, 0.98);
+  background: rgba(255, 112, 135, 0.18);
 }
 
 .hero-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
-  border: 1px solid #e5ebf5;
+  background: linear-gradient(145deg, #23244a 0%, #1a1b37 100%);
+  border: 1px solid rgba(165, 178, 255, 0.2);
   border-radius: 1rem;
   padding: 0.9rem;
   margin-bottom: 0.75rem;
@@ -219,7 +223,7 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 0.8rem;
-  box-shadow: 0 12px 26px rgba(48, 67, 102, 0.1);
+  box-shadow: 0 12px 30px rgba(8, 10, 30, 0.52);
 }
 
 .usb-card {
@@ -283,14 +287,15 @@ body {
 
 .hero-title {
   margin: 0 0 0.24rem;
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 700;
+  color: #f4f6ff;
 }
 
 .danger-btn {
-  color: #e05b66;
-  border-color: rgba(244, 186, 192, 0.7);
-  background: rgba(255, 244, 245, 0.88);
+  color: #ff8ea3;
+  border-color: rgba(255, 144, 165, 0.45);
+  background: rgba(255, 112, 135, 0.13);
 }
 
 .shopping-list,
@@ -303,13 +308,13 @@ body {
 }
 
 .item-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f9fbff 100%);
-  border: 1px solid #e4ebf5;
+  background: linear-gradient(145deg, #25274d 0%, #1c1d3b 100%);
+  border: 1px solid rgba(165, 178, 255, 0.2);
   border-radius: 0.92rem;
   padding: 0.8rem;
   display: grid;
   gap: 0.6rem;
-  box-shadow: 0 8px 24px rgba(44, 61, 89, 0.07);
+  box-shadow: 0 10px 24px rgba(8, 10, 30, 0.48);
 }
 
 .item-top {
@@ -321,6 +326,7 @@ body {
 
 .item-name {
   font-weight: 600;
+  color: #f2f4ff;
 }
 
 .item-meta {
@@ -360,10 +366,10 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  border: 1px solid #d8e3f1;
+  border: 1px solid rgba(161, 174, 239, 0.36);
   border-radius: 0.6rem;
   padding: 0.35rem;
-  background: #f6f9fe;
+  background: rgba(126, 143, 221, 0.16);
 }
 
 .status-pill {
@@ -373,13 +379,13 @@ body {
 }
 
 .status-pill.pending {
-  background: #fff4dc;
-  color: #b27a0e;
+  background: rgba(185, 255, 53, 0.16);
+  color: #bdfc58;
 }
 
 .status-pill.bought {
-  background: #e7fcef;
-  color: #2b9f63;
+  background: rgba(69, 216, 140, 0.2);
+  color: #8ef0b7;
 }
 
 .manual-form {
@@ -391,9 +397,9 @@ body {
 .manual-form input {
   flex: 1;
   min-width: 220px;
-  border: 1px solid #dbe5f2;
-  background: #ffffff;
-  color: #24344a;
+  border: 1px solid rgba(164, 178, 248, 0.4);
+  background: rgba(130, 145, 219, 0.15);
+  color: #eef1ff;
   border-radius: 0.6rem;
   padding: 0.65rem;
 }
@@ -408,12 +414,12 @@ body {
 
 .scanner-modal {
   width: min(740px, 92vw);
-  border: 1px solid #d6e1f0;
+  border: 1px solid rgba(164, 178, 248, 0.38);
   border-radius: 1rem;
-  background: #ffffff;
-  color: #24344a;
+  background: linear-gradient(150deg, #25274d 0%, #1a1b35 100%);
+  color: #f1f4ff;
   padding: 0.8rem;
-  box-shadow: 0 22px 50px rgba(18, 29, 53, 0.35);
+  box-shadow: 0 24px 55px rgba(2, 4, 17, 0.72);
 }
 
 .scanner-modal[open] {
@@ -430,7 +436,7 @@ body {
 }
 
 .scanner-modal::backdrop {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(5, 6, 18, 0.82);
 }
 
 .scanner-header {
@@ -445,7 +451,7 @@ body {
   min-height: 240px;
   max-height: 50vh;
   border-radius: 0.7rem;
-  border: 1px solid #d6e1f0;
+  border: 1px solid rgba(164, 178, 248, 0.32);
   background: black;
   overflow: hidden;
 }
@@ -482,22 +488,22 @@ body {
 .confirm-label {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #344256;
+  color: #d3daf8;
 }
 
 .confirm-input {
   width: 100%;
-  border: 1px solid #dbe5f2;
-  background: #ffffff;
-  color: #24344a;
+  border: 1px solid rgba(164, 178, 248, 0.42);
+  background: rgba(130, 145, 219, 0.16);
+  color: #eff2ff;
   border-radius: 0.75rem;
   padding: 0.78rem 0.85rem;
   font-size: 1rem;
 }
 
 .confirm-input:focus {
-  outline: 2px solid rgba(51, 182, 222, 0.24);
-  border-color: #8fd7ea;
+  outline: 2px solid rgba(185, 255, 53, 0.28);
+  border-color: #c4ff56;
 }
 
 @media (max-width: 420px) {
