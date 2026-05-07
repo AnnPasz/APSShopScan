@@ -4,6 +4,8 @@ const STORAGE_KEYS = {
   manualNextId: "aps-manual-next-id",
   eanLookupCache: "aps-ean-lookup-cache",
   language: "aps-language",
+  eanSearchApiToken: "aps-ean-search-api-token",
+  eanSearchQueriesUsed: "aps-ean-search-queries-used",
 };
 
 const TRANSLATIONS = {
@@ -152,8 +154,8 @@ const state = {
   eanLookupCache: {},
   pendingScannedItem: null,
   language: "pl",
-  eanSearchApiKey: null,  // Set this if user provides EAN Search API key
-  eanSearchQueriesUsed: 0  // Track paid queries
+  eanSearchApiToken: null,
+  eanSearchQueriesUsed: 0
 };
 
 const scannerAutoTrigger = {
@@ -245,6 +247,18 @@ function loadState() {
   if (language && TRANSLATIONS[language]) {
     state.language = language;
   }
+
+  const token = localStorage.getItem(STORAGE_KEYS.eanSearchApiToken);
+  if (token && token.trim()) {
+    state.eanSearchApiToken = token.trim();
+  }
+
+  const paidQueriesUsed = Number(localStorage.getItem(STORAGE_KEYS.eanSearchQueriesUsed));
+  if (!Number.isNaN(paidQueriesUsed) && paidQueriesUsed >= 0) {
+    state.eanSearchQueriesUsed = paidQueriesUsed;
+  }
+
+  hydrateEanSearchTokenFromUrl();
 }
 
 function persistState() {
@@ -253,6 +267,33 @@ function persistState() {
   localStorage.setItem(STORAGE_KEYS.manualNextId, String(state.manualNextId));
   localStorage.setItem(STORAGE_KEYS.eanLookupCache, JSON.stringify(state.eanLookupCache));
   localStorage.setItem(STORAGE_KEYS.language, state.language);
+  localStorage.setItem(STORAGE_KEYS.eanSearchQueriesUsed, String(state.eanSearchQueriesUsed));
+
+  if (state.eanSearchApiToken) {
+    localStorage.setItem(STORAGE_KEYS.eanSearchApiToken, state.eanSearchApiToken);
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.eanSearchApiToken);
+  }
+}
+
+function hydrateEanSearchTokenFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const tokenFromUrl = params.get("eanToken");
+    if (!tokenFromUrl || !tokenFromUrl.trim()) {
+      return;
+    }
+
+    state.eanSearchApiToken = tokenFromUrl.trim();
+    localStorage.setItem(STORAGE_KEYS.eanSearchApiToken, state.eanSearchApiToken);
+
+    params.delete("eanToken");
+    const nextQuery = params.toString();
+    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}${window.location.hash}`;
+    window.history.replaceState({}, "", nextUrl);
+  } catch (error) {
+    console.debug("Could not parse URL token", error);
+  }
 }
 
 function t(key, vars = {}) {
@@ -785,8 +826,7 @@ async function lookupProductNameByEan(eanCode) {
     };
   }
 
-  // Define multiple lookup sources in priority order
-  // FREE TIER (always first, no limits):
+  // FREE TIER (always first, no limits)
   const freeSources = [
     // Tier 1: Open Facts databases (most reliable, community-driven, FREE)
     { type: "openFacts", label: "Open Food Facts", endpoint: `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
@@ -798,12 +838,6 @@ async function lookupProductNameByEan(eanCode) {
     { type: "icecat", label: "Icecat", endpoint: `https://icecat.biz/api/product/search?barcode=${encodeURIComponent(eanCode)}` },
     // Tier 4: Wikidata product lookup (universal knowledge base, FREE, unlimited)
     { type: "wikidata", label: "Wikidata", endpoint: `https://www.wikidata.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(`barcode:${eanCode}`)}&srnamespace=0` }
-  ];
-
-  // PAID TIER (only if all free sources fail):
-  const paidSources = [
-    // Tier 5: EAN Search API (PAID - use sparingly, 100 queries/month on trial)
-    { type: "eanSearch", label: "EAN Search", endpoint: `https://www.ean-search.org/api/1.0/?format=json&action=barcodeLookup&barcode=${encodeURIComponent(eanCode)}`, requiresKey: true }
   ];
 
   // Try free sources first
@@ -820,12 +854,23 @@ async function lookupProductNameByEan(eanCode) {
     }
   }
 
-  // All free sources exhausted - try paid sources only if explicitly needed
-  console.debug(`All free lookup sources exhausted for ${eanCode}, skipping paid EAN Search to conserve queries`);
-  
-  // Optional: Log that we could try paid sources if user enables it
-  if (state.eanLookupCache[eanCode + "_attempted_paid"] !== true) {
-    console.debug(`Paid sources available but conserved: ${paidSources.map(s => s.label).join(", ")}`);
+  // Paid fallback (only if token exists)
+  if (state.eanSearchApiToken) {
+    const paidSource = {
+      type: "eanSearch",
+      label: "EAN Search",
+      endpoint: `https://api.ean-search.org/api?token=${encodeURIComponent(state.eanSearchApiToken)}&op=barcode-lookup&format=json&ean=${encodeURIComponent(eanCode)}`,
+      isPaid: true
+    };
+
+    const paidLookup = await fetchLookupCandidate(paidSource);
+    if (paidLookup.name) {
+      state.eanLookupCache[eanCode] = { name: paidLookup.name, source: paidSource.label };
+      persistState();
+      return { name: paidLookup.name, sourceLabel: paidSource.label };
+    }
+
+    return { name: null, sourceLabel: "EAN Search" };
   }
 
   return { name: null, sourceLabel: null };
@@ -853,6 +898,11 @@ async function fetchLookupCandidate(source) {
 
     if (!response.ok) {
       return { name: null };
+    }
+
+    if (source.isPaid) {
+      state.eanSearchQueriesUsed += 1;
+      persistState();
     }
 
     const data = await response.json();
