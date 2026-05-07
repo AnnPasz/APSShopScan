@@ -45,6 +45,9 @@ const TRANSLATIONS = {
     manualPlaceholder: "np. Banany",
     manualSubmit: "Dodaj produkt bez EAN",
     manualHelp: "Każdy produkt dostaje ID i kod QR z treścią NOEAN:<id>.",
+    printAllQr: "Drukuj wszystkie kody QR",
+    printAllQrEmpty: "Brak produktów bez EAN do wydruku.",
+    printAllTitle: "Drukuj wszystkie kody QR",
     scannerTitle: "Skanuj kod kreskowy / QR",
     scannerCancel: "Anuluj",
     scannerDefaultStatus: "Skieruj aparat na kod EAN albo QR NOEAN.",
@@ -125,6 +128,9 @@ const TRANSLATIONS = {
     manualPlaceholder: "e.g. Bananas",
     manualSubmit: "Add no-EAN item",
     manualHelp: "Each product gets an ID and QR content NOEAN:<id>.",
+    printAllQr: "Print all QR codes",
+    printAllQrEmpty: "No no-EAN products to print.",
+    printAllTitle: "Print all QR codes",
     scannerTitle: "Scan barcode / QR",
     scannerCancel: "Cancel",
     scannerDefaultStatus: "Point the camera at an EAN code or a NOEAN QR code.",
@@ -213,6 +219,7 @@ const elements = {
   manualName: document.getElementById("manual-name"),
   manualSubmitBtn: document.getElementById("manual-submit-btn"),
   manualHelp: document.getElementById("manual-help"),
+  manualPrintAllBtn: document.getElementById("manual-print-all-btn"),
   manualItems: document.getElementById("manual-items"),
   lookupStatus: document.getElementById("lookup-status"),
   scannerModal: document.getElementById("scanner-modal"),
@@ -259,6 +266,7 @@ function bindEvents() {
   elements.usbCameraBtn.addEventListener("click", openScanner);
   elements.closeScanBtn.addEventListener("click", closeScanner);
   elements.manualForm.addEventListener("submit", onAddManualItem);
+  elements.manualPrintAllBtn.addEventListener("click", printAllManualQrs);
   elements.confirmScanAdd.addEventListener("click", confirmPendingScannedItem);
   elements.confirmScanCancel.addEventListener("click", clearPendingScannedItem);
   elements.confirmScanCancelTop.addEventListener("click", clearPendingScannedItem);
@@ -366,6 +374,7 @@ function applyLanguage() {
   elements.manualName.placeholder = t("manualPlaceholder");
   elements.manualSubmitBtn.textContent = t("manualSubmit");
   elements.manualHelp.textContent = t("manualHelp");
+  elements.manualPrintAllBtn.textContent = t("printAllQr");
   elements.scannerTitle.textContent = t("scannerTitle");
   elements.closeScanBtn.textContent = t("scannerCancel");
   elements.scanStatus.textContent = state.scanning ? t("scannerRunning") : t("scannerDefaultStatus");
@@ -1268,6 +1277,8 @@ function onAddManualItem(event) {
 }
 
 function renderManualItems() {
+  elements.manualPrintAllBtn.disabled = !state.manualItems.length;
+
   if (!state.manualItems.length) {
     elements.manualItems.innerHTML = `<li class="item-card">${escapeHtml(t("noManualItems"))}</li>`;
     return;
@@ -1358,6 +1369,59 @@ function printQr(item) {
         <p>${escapeHtml(t("printIdLabel"))}: ${item.id}</p>
         <p>${escapeHtml(t("printPayloadLabel"))}: ${payload}</p>
         <img src="${qrUrl}" alt="QR ${item.id}" />
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+}
+
+function printAllManualQrs() {
+  if (!state.manualItems.length) {
+    alert(t("printAllQrEmpty"));
+    return;
+  }
+
+  const sortedItems = state.manualItems.slice().sort((a, b) => b.id - a.id);
+  const printWindow = window.open("", "_blank", "width=900,height=760");
+  if (!printWindow) {
+    return;
+  }
+
+  const blocks = sortedItems
+    .map((item) => {
+      const payload = `NOEAN:${item.id}`;
+      const qrUrl = buildQrUrl(payload);
+      return `
+        <article class="qr-card">
+          <h2>${escapeHtml(item.name)}</h2>
+          <p>${escapeHtml(t("printIdLabel"))}: ${item.id}</p>
+          <p>${escapeHtml(t("printPayloadLabel"))}: ${escapeHtml(payload)}</p>
+          <img src="${qrUrl}" alt="QR ${item.id}" />
+        </article>
+      `;
+    })
+    .join("");
+
+  printWindow.document.write(`
+    <html lang="${state.language}">
+      <head>
+        <title>${escapeHtml(t("printAllTitle"))}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+          h1 { margin: 0 0 16px; font-size: 24px; }
+          .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+          .qr-card { border: 1px solid #d7deea; border-radius: 12px; padding: 12px; break-inside: avoid; }
+          .qr-card h2 { margin: 0 0 8px; font-size: 18px; }
+          .qr-card p { margin: 4px 0; font-size: 13px; }
+          .qr-card img { width: 220px; height: 220px; object-fit: contain; display: block; margin-top: 8px; }
+          @media print { body { padding: 10px; } }
+        </style>
+      </head>
+      <body>
+        <h1>${escapeHtml(t("printAllTitle"))}</h1>
+        <section class="grid">${blocks}</section>
       </body>
     </html>
   `);
