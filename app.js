@@ -637,18 +637,29 @@ async function lookupProductNameByEan(eanCode) {
     };
   }
 
+  // Define multiple lookup sources in priority order
   const sources = [
-    { label: "Open Food Facts", endpoint: `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
-    { label: "Open Beauty Facts", endpoint: `https://world.openbeautyfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
-    { label: "Open Pet Food Facts", endpoint: `https://world.openpetfoodfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` }
+    // Tier 1: Open Facts databases (most reliable, community-driven)
+    { type: "openFacts", label: "Open Food Facts", endpoint: `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
+    { type: "openFacts", label: "Open Beauty Facts", endpoint: `https://world.openbeautyfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
+    { type: "openFacts", label: "Open Pet Food Facts", endpoint: `https://world.openpetfoodfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
+    // Tier 2: Barcode Lookup (UPC database, good for consumer products)
+    { type: "barcodeLookup", label: "Barcode Lookup", endpoint: `https://api.barcodelookup.com/v3/products?barcode=${encodeURIComponent(eanCode)}&key=free` },
+    // Tier 3: EAN Search (alternative UPC/EAN database)
+    { type: "eanSearch", label: "EAN Search", endpoint: `https://www.ean-search.org/?q=${encodeURIComponent(eanCode)}&format=json` }
   ];
 
   for (const source of sources) {
-    const lookup = await fetchLookupCandidate(source.endpoint);
-    if (lookup.name) {
-      state.eanLookupCache[eanCode] = { name: lookup.name, source: source.label };
-      persistState();
-      return { name: lookup.name, sourceLabel: source.label };
+    try {
+      const lookup = await fetchLookupCandidate(source);
+      if (lookup.name) {
+        state.eanLookupCache[eanCode] = { name: lookup.name, source: source.label };
+        persistState();
+        return { name: lookup.name, sourceLabel: source.label };
+      }
+    } catch (error) {
+      // Continue to next source if this one fails
+      console.debug(`Lookup failed for ${source.label}:`, error);
     }
   }
 
@@ -660,16 +671,17 @@ function formatLookupSourceLabel(source, isCached = false) {
   return isCached ? `${base}${t("lookupCachedSuffix")}` : base;
 }
 
-async function fetchLookupCandidate(endpoint) {
+async function fetchLookupCandidate(source) {
   const timeoutController = new AbortController();
-  const timeoutId = setTimeout(() => timeoutController.abort(), 3500);
+  const timeoutId = setTimeout(() => timeoutController.abort(), 5000); // Increased timeout to 5 seconds
 
   try {
-    const response = await fetch(endpoint, {
+    const response = await fetch(source.endpoint, {
       method: "GET",
       signal: timeoutController.signal,
       headers: {
-        Accept: "application/json"
+        "Accept": "application/json",
+        "User-Agent": "APSShopScan/1.0 (https://github.com/AnnPasz/APSShopScan)"
       }
     });
 
@@ -678,35 +690,75 @@ async function fetchLookupCandidate(endpoint) {
     }
 
     const data = await response.json();
-    const candidates = [
-      data?.product?.product_name,
-      data?.product?.product_name_pl,
-      data?.product?.product_name_en,
-      data?.product?.generic_name,
-      data?.product?.generic_name_pl,
-      data?.product?.generic_name_en,
-      data?.product?.abbreviated_product_name,
-      data?.product?.brands
-    ];
+    let name = null;
 
-    const name = candidates.find((value) => value && String(value).trim());
+    // Extract name based on API type
+    if (source.type === "openFacts") {
+      name = extractOpenFactsName(data);
+    } else if (source.type === "barcodeLookup") {
+      name = extractBarcodeLookupName(data);
+    } else if (source.type === "eanSearch") {
+      name = extractEanSearchName(data);
+    }
+
     if (!name) {
       return { name: null };
     }
 
-    return { name: cleanLookupName(String(name)) };
-  } catch {
+    return { name: cleanLookupName(name) };
+  } catch (error) {
+    console.debug(`Fetch error for ${source.label}:`, error.message);
     return { name: null };
   } finally {
     clearTimeout(timeoutId);
   }
 }
 
+function extractOpenFactsName(data) {
+  if (!data?.product) return null;
+  const product = data.product;
+  const candidates = [
+    product.product_name,
+    product.product_name_pl,
+    product.product_name_en,
+    product.generic_name,
+    product.generic_name_pl,
+    product.generic_name_en,
+    product.abbreviated_product_name,
+    product.brands
+  ];
+  return candidates.find((value) => value && String(value).trim());
+}
+
+function extractBarcodeLookupName(data) {
+  // Barcode Lookup API returns: { products: [{ title: "...", description: "..." }, ...] }
+  if (!data?.products || !Array.isArray(data.products) || data.products.length === 0) {
+    return null;
+  }
+  const product = data.products[0];
+  return product.title || product.description || null;
+}
+
+function extractEanSearchName(data) {
+  // EAN Search API returns: { ok: true, product: { name: "..." } } or array format
+  if (Array.isArray(data) && data.length > 0) {
+    return data[0].name || data[0].title || null;
+  }
+  if (data?.product?.name) {
+    return data.product.name;
+  }
+  if (data?.name) {
+    return data.name;
+  }
+  return null;
+}
+
 function cleanLookupName(value) {
+  if (!value) return null;
   return String(value)
     .replace(/\s+/g, " ")
     .replace(/^[\-–—\s]+|[\-–—\s]+$/g, "")
-    .trim();
+    .trim() || null;
 }
 
 function openConfirmScanModal() {
