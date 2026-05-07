@@ -151,7 +151,9 @@ const state = {
   scannerInstance: null,
   eanLookupCache: {},
   pendingScannedItem: null,
-  language: "pl"
+  language: "pl",
+  eanSearchApiKey: null,  // Set this if user provides EAN Search API key
+  eanSearchQueriesUsed: 0  // Track paid queries
 };
 
 const scannerAutoTrigger = {
@@ -784,22 +786,28 @@ async function lookupProductNameByEan(eanCode) {
   }
 
   // Define multiple lookup sources in priority order
-  const sources = [
-    // Tier 1: Open Facts databases (most reliable, community-driven)
+  // FREE TIER (always first, no limits):
+  const freeSources = [
+    // Tier 1: Open Facts databases (most reliable, community-driven, FREE)
     { type: "openFacts", label: "Open Food Facts", endpoint: `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
     { type: "openFacts", label: "Open Beauty Facts", endpoint: `https://world.openbeautyfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
     { type: "openFacts", label: "Open Pet Food Facts", endpoint: `https://world.openpetfoodfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
-    // Tier 2: Barcode Lookup (UPC database, good for consumer products)
+    // Tier 2: Barcode Lookup (UPC database, good for consumer products, FREE tier limited)
     { type: "barcodeLookup", label: "Barcode Lookup", endpoint: `https://api.barcodelookup.com/v3/products?barcode=${encodeURIComponent(eanCode)}&key=free` },
-    // Tier 3: EAN Search (alternative UPC/EAN database)
-    { type: "eanSearch", label: "EAN Search", endpoint: `https://www.ean-search.org/api/1.0/?format=json&action=barcodeLookup&barcode=${encodeURIComponent(eanCode)}` },
-    // Tier 4: Icecat (electronics/household products)
+    // Tier 3: Icecat (electronics/household products, FREE)
     { type: "icecat", label: "Icecat", endpoint: `https://icecat.biz/api/product/search?barcode=${encodeURIComponent(eanCode)}` },
-    // Tier 5: Wikidata product lookup (universal knowledge base)
+    // Tier 4: Wikidata product lookup (universal knowledge base, FREE, unlimited)
     { type: "wikidata", label: "Wikidata", endpoint: `https://www.wikidata.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(`barcode:${eanCode}`)}&srnamespace=0` }
   ];
 
-  for (const source of sources) {
+  // PAID TIER (only if all free sources fail):
+  const paidSources = [
+    // Tier 5: EAN Search API (PAID - use sparingly, 100 queries/month on trial)
+    { type: "eanSearch", label: "EAN Search", endpoint: `https://www.ean-search.org/api/1.0/?format=json&action=barcodeLookup&barcode=${encodeURIComponent(eanCode)}`, requiresKey: true }
+  ];
+
+  // Try free sources first
+  for (const source of freeSources) {
     try {
       const lookup = await fetchLookupCandidate(source);
       if (lookup.name) {
@@ -808,9 +816,16 @@ async function lookupProductNameByEan(eanCode) {
         return { name: lookup.name, sourceLabel: source.label };
       }
     } catch (error) {
-      // Continue to next source if this one fails
       console.debug(`Lookup failed for ${source.label}:`, error);
     }
+  }
+
+  // All free sources exhausted - try paid sources only if explicitly needed
+  console.debug(`All free lookup sources exhausted for ${eanCode}, skipping paid EAN Search to conserve queries`);
+  
+  // Optional: Log that we could try paid sources if user enables it
+  if (state.eanLookupCache[eanCode + "_attempted_paid"] !== true) {
+    console.debug(`Paid sources available but conserved: ${paidSources.map(s => s.label).join(", ")}`);
   }
 
   return { name: null, sourceLabel: null };
