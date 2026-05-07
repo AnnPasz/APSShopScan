@@ -789,7 +789,11 @@ async function lookupProductNameByEan(eanCode) {
     // Tier 2: Barcode Lookup (UPC database, good for consumer products)
     { type: "barcodeLookup", label: "Barcode Lookup", endpoint: `https://api.barcodelookup.com/v3/products?barcode=${encodeURIComponent(eanCode)}&key=free` },
     // Tier 3: EAN Search (alternative UPC/EAN database)
-    { type: "eanSearch", label: "EAN Search", endpoint: `https://www.ean-search.org/?q=${encodeURIComponent(eanCode)}&format=json` }
+    { type: "eanSearch", label: "EAN Search", endpoint: `https://www.ean-search.org/?q=${encodeURIComponent(eanCode)}&format=json` },
+    // Tier 4: UPC Database (universal product codes, includes paper/household)
+    { type: "upcDatabase", label: "UPC Database", endpoint: `https://api.upcdatabase.com/product/${encodeURIComponent(eanCode)}/` },
+    // Tier 5: ISBN/EAN/UPC resolver (Verhoeven's service - universal barcode lookup)
+    { type: "upcResolver", label: "UPC Resolver", endpoint: `https://upcresolver.com/code/${encodeURIComponent(eanCode)}/` }
   ];
 
   for (const source of sources) {
@@ -842,6 +846,10 @@ async function fetchLookupCandidate(source) {
       name = extractBarcodeLookupName(data);
     } else if (source.type === "eanSearch") {
       name = extractEanSearchName(data);
+    } else if (source.type === "upcDatabase") {
+      name = extractUpcDatabaseName(data);
+    } else if (source.type === "upcResolver") {
+      name = extractUpcResolverName(data);
     }
 
     if (!name) {
@@ -892,6 +900,31 @@ function extractEanSearchName(data) {
   }
   if (data?.name) {
     return data.name;
+  }
+  return null;
+}
+
+function extractUpcDatabaseName(data) {
+  // UPC Database API returns: { code: "...", title: "...", description: "..." }
+  if (!data) return null;
+  return data.title || data.description || data.name || null;
+}
+
+function extractUpcResolverName(data) {
+  // UPC Resolver returns HTML, but we can try JSON fallback
+  if (!data) return null;
+  // If it's JSON response with product info
+  if (data.title) {
+    return data.title;
+  }
+  if (data.description) {
+    return data.description;
+  }
+  if (data.name) {
+    return data.name;
+  }
+  if (data.product) {
+    return data.product.title || data.product.name || null;
   }
   return null;
 }
