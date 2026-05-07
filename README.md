@@ -1,24 +1,31 @@
 # APS Home Shopping Manager
 
-Mobile-first browser app for managing home shopping, with camera scan and manual no-EAN products.
+Mobile-first browser app for managing home shopping, with camera scan, USB barcode scanner support, and manual no-EAN products.
 
 ## Features
 
+- Polish is the default language
+- English can be enabled from the flag button in the header
 - Shopping list flow:
   - default quantity is `1`
   - quantity can be increased/decreased later
-  - `Cancel` removes item from list
+  - `Remove` deletes item from list
   - `Bought` changes status and keeps bought items at bottom
-- Camera scan (`Add` button):
+- Camera scan:
   - opens device camera
   - scans `EAN-8`, `EAN-13`, and `QR`
   - validates EAN checksum before adding
+- USB barcode scanner support:
+  - works with keyboard-style USB scanners
+  - click the USB input, scan code, and confirm with `Enter`
+  - supports EAN and `NOEAN:<id>` values
 - Optional EAN product name lookup:
-  - toggle in UI: `Try product name lookup from EAN`
-  - uses Open Food Facts API
-  - if not found or offline, falls back to `EAN <code>`
+  - can be turned on/off in UI
+  - tries multiple Open Facts sources
+  - opens a confirmation step so the name can be corrected before adding
+  - confirmed names are cached in browser storage for future scans
 - No-EAN subpage:
-  - manually add products (fruit/vegetables etc.)
+  - manually add products (fruit, vegetables, bakery etc.)
   - each gets numeric ID
   - QR payload format is `NOEAN:<id>`
   - QR can be printed and scanned later
@@ -50,5 +57,5 @@ This repository includes workflow: `.github/workflows/deploy-pages.yml`.
 ## Notes
 
 - Data is stored in browser `localStorage`.
-- Barcode scanning uses `BarcodeDetector` (best in Chromium-based browsers).
-- If scanning is unsupported, use a supported mobile/desktop browser (Chrome/Edge).
+- Camera scanning uses `html5-qrcode` for better mobile browser support.
+- USB scanners are handled as keyboard input in the browser.

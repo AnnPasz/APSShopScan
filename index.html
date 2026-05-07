@@ -1,34 +1,50 @@
 <!doctype html>
-<html lang="en">
+<html lang="pl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>APS Home Shopping Manager</title>
+    <title>APS Lista Zakupów</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="app-shell">
       <header class="app-header">
-        <p class="brand">SHOPPING APP</p>
-        <h1>Manage your home shopping</h1>
+        <div class="header-top-row">
+          <p id="brand-label" class="brand">APLIKACJA ZAKUPOWA</p>
+          <button id="language-toggle" class="lang-btn" type="button" aria-label="Przełącz na angielski" title="Przełącz na angielski">🇬🇧</button>
+        </div>
+        <h1 id="app-title">Zarządzaj domową listą zakupów</h1>
         <nav class="top-nav">
-          <button id="nav-shopping" class="nav-btn active">Shopping List</button>
-          <button id="nav-manual" class="nav-btn">No-EAN Items</button>
+          <button id="nav-shopping" class="nav-btn active">Lista zakupów</button>
+          <button id="nav-manual" class="nav-btn">Produkty bez EAN</button>
         </nav>
       </header>
 
       <section id="shopping-view" class="view">
         <div class="hero-card">
           <div>
-            <p class="hero-title">Scan & Add</p>
-            <p class="helper-text">Use your camera to scan EAN/QR codes.</p>
+            <p id="camera-card-title" class="hero-title">Skanuj i dodaj</p>
+            <p id="camera-card-text" class="helper-text">Użyj aparatu, aby skanować kody EAN i QR.</p>
           </div>
-          <button id="add-scan-btn" class="primary-btn">Add</button>
+          <button id="add-scan-btn" class="primary-btn">Aparat</button>
+        </div>
+
+        <div class="hero-card usb-card">
+          <div>
+            <p id="usb-card-title" class="hero-title">Skaner USB</p>
+            <p id="usb-card-text" class="helper-text">Kliknij pole, zeskanuj kod i zatwierdź Enterem.</p>
+          </div>
+          <button id="usb-focus-btn" class="ghost-btn" type="button">Aktywuj</button>
+        </div>
+
+        <div class="usb-input-card">
+          <input id="usb-scan-input" class="confirm-input" type="text" inputmode="numeric" autocomplete="off" placeholder="Zeskanuj lub wpisz kod EAN / NOEAN i naciśnij Enter" />
+          <p id="usb-status" class="helper-text"></p>
         </div>
 
         <label class="lookup-toggle" for="ean-lookup-enabled">
           <input id="ean-lookup-enabled" type="checkbox" checked />
-          <span>Try product name lookup from EAN (optional)</span>
+          <span id="lookup-toggle-label">Próbuj wyszukać nazwę produktu po EAN (opcjonalnie)</span>
         </label>
 
         <p id="lookup-status" class="helper-text"></p>
@@ -37,12 +53,12 @@
       </section>
 
       <section id="manual-view" class="view hidden">
-        <h2>Add product without EAN</h2>
+        <h2 id="manual-title">Dodaj produkt bez EAN</h2>
         <form id="manual-form" class="manual-form">
-          <input id="manual-name" type="text" placeholder="e.g. Bananas" required />
-          <button type="submit" class="primary-btn">Add no-EAN Item</button>
+          <input id="manual-name" type="text" placeholder="np. Banany" required />
+          <button id="manual-submit-btn" type="submit" class="primary-btn">Dodaj produkt bez EAN</button>
         </form>
-        <p class="helper-text">Each item gets an ID and QR payload <code>NOEAN:&lt;id&gt;</code>.</p>
+        <p id="manual-help" class="helper-text">Każdy produkt dostaje ID i kod QR z treścią <code>NOEAN:&lt;id&gt;</code>.</p>
 
         <ul id="manual-items" class="manual-items"></ul>
       </section>
@@ -50,26 +66,26 @@
 
     <dialog id="scanner-modal" class="scanner-modal">
       <div class="scanner-header">
-        <h3>Scan barcode / QR</h3>
-        <button id="close-scan-btn" class="ghost-btn">Cancel</button>
+        <h3 id="scanner-title">Skanuj kod kreskowy / QR</h3>
+        <button id="close-scan-btn" class="ghost-btn">Anuluj</button>
       </div>
       <div id="scanner-reader" class="scanner-reader"></div>
-      <p id="scan-status" class="helper-text">Point camera at an EAN barcode or NOEAN QR code.</p>
+      <p id="scan-status" class="helper-text">Skieruj aparat na kod EAN albo QR NOEAN.</p>
     </dialog>
 
     <dialog id="confirm-scan-modal" class="scanner-modal confirm-modal">
       <div class="scanner-header">
-        <h3>Confirm scanned item</h3>
-        <button id="confirm-scan-cancel-top" class="ghost-btn">Close</button>
+        <h3 id="confirm-title">Potwierdź zeskanowany produkt</h3>
+        <button id="confirm-scan-cancel-top" class="ghost-btn">Zamknij</button>
       </div>
       <div class="confirm-grid">
         <p id="confirm-scan-code" class="helper-text"></p>
-        <label class="confirm-label" for="confirm-scan-name">Product name</label>
-        <input id="confirm-scan-name" class="confirm-input" type="text" placeholder="Edit product name before adding" />
+        <label id="confirm-name-label" class="confirm-label" for="confirm-scan-name">Nazwa produktu</label>
+        <input id="confirm-scan-name" class="confirm-input" type="text" placeholder="W razie potrzeby popraw nazwę produktu" />
         <p id="confirm-scan-source" class="helper-text"></p>
         <div class="item-controls">
-          <button id="confirm-scan-cancel" class="ghost-btn">Cancel</button>
-          <button id="confirm-scan-add" class="primary-btn">Add to list</button>
+          <button id="confirm-scan-cancel" class="ghost-btn">Anuluj</button>
+          <button id="confirm-scan-add" class="primary-btn">Dodaj do listy</button>
         </div>
       </div>
     </dialog>
