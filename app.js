@@ -3,6 +3,7 @@ const STORAGE_KEYS = {
   manualItems: "aps-manual-items",
   manualNextId: "aps-manual-next-id",
   eanLookupEnabled: "aps-ean-lookup-enabled",
+  eanLookupCache: "aps-ean-lookup-cache",
 };
 
 const state = {
@@ -12,6 +13,8 @@ const state = {
   scanning: false,
   scannerInstance: null,
   eanLookupEnabled: true,
+  eanLookupCache: {},
+  pendingScannedItem: null,
 };
 
 const elements = {
@@ -30,6 +33,13 @@ const elements = {
   scanStatus: document.getElementById("scan-status"),
   eanLookupEnabled: document.getElementById("ean-lookup-enabled"),
   lookupStatus: document.getElementById("lookup-status"),
+  confirmScanModal: document.getElementById("confirm-scan-modal"),
+  confirmScanCode: document.getElementById("confirm-scan-code"),
+  confirmScanName: document.getElementById("confirm-scan-name"),
+  confirmScanSource: document.getElementById("confirm-scan-source"),
+  confirmScanAdd: document.getElementById("confirm-scan-add"),
+  confirmScanCancel: document.getElementById("confirm-scan-cancel"),
+  confirmScanCancelTop: document.getElementById("confirm-scan-cancel-top"),
 };
 
 init();
@@ -50,6 +60,9 @@ function bindEvents() {
   elements.closeScanBtn.addEventListener("click", closeScanner);
   elements.manualForm.addEventListener("submit", onAddManualItem);
   elements.eanLookupEnabled.addEventListener("change", onLookupToggleChanged);
+  elements.confirmScanAdd.addEventListener("click", confirmPendingScannedItem);
+  elements.confirmScanCancel.addEventListener("click", clearPendingScannedItem);
+  elements.confirmScanCancelTop.addEventListener("click", clearPendingScannedItem);
 }
 
 function showView(view) {
@@ -73,6 +86,8 @@ function loadState() {
     state.eanLookupEnabled = false;
   }
 
+  state.eanLookupCache = readJson(STORAGE_KEYS.eanLookupCache, {});
+
   elements.eanLookupEnabled.checked = state.eanLookupEnabled;
 }
 
@@ -81,6 +96,7 @@ function persistState() {
   localStorage.setItem(STORAGE_KEYS.manualItems, JSON.stringify(state.manualItems));
   localStorage.setItem(STORAGE_KEYS.manualNextId, String(state.manualNextId));
   localStorage.setItem(STORAGE_KEYS.eanLookupEnabled, String(state.eanLookupEnabled));
+  localStorage.setItem(STORAGE_KEYS.eanLookupCache, JSON.stringify(state.eanLookupCache));
 }
 
 function onLookupToggleChanged(event) {
@@ -228,6 +244,9 @@ async function openScanner() {
         const format = mapHtml5Format(decodedResult?.result?.format?.formatName);
         if (await handleScanResult(decodedText || "", format)) {
           await closeScanner();
+          if (state.pendingScannedItem) {
+            openConfirmScanModal();
+          }
         }
       },
       () => {}
@@ -285,23 +304,27 @@ async function handleScanResult(rawValue, format) {
     }
 
     let productName = `EAN ${code}`;
+    let lookupMeta = "Lookup disabled";
     if (state.eanLookupEnabled) {
       elements.lookupStatus.textContent = `Looking up product name for EAN ${code}...`;
       const lookup = await lookupProductNameByEan(code);
       if (lookup.name) {
         productName = lookup.name;
+        lookupMeta = `Suggested by ${lookup.source}`;
         elements.lookupStatus.textContent = `Found product name: ${lookup.name}`;
       } else {
-        elements.lookupStatus.textContent = `Lookup not found for EAN ${code}. Added with fallback name.`;
+        lookupMeta = "No reliable online match found";
+        elements.lookupStatus.textContent = `Lookup not found for EAN ${code}. Please confirm the name.`;
       }
     }
 
-    addShoppingItem({
+    state.pendingScannedItem = {
       name: productName,
       meta: `${format.toUpperCase()} product`,
       source: "ean",
       sourceCode: code,
-    });
+      lookupMeta,
+    };
 
     return true;
   }
@@ -328,9 +351,32 @@ async function handleScanResult(rawValue, format) {
 }
 
 async function lookupProductNameByEan(eanCode) {
-  const endpoint = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json`;
+  const cached = state.eanLookupCache[eanCode];
+  if (cached?.name) {
+    return { name: cached.name, source: `${cached.source} (cached)` };
+  }
+
+  const sources = [
+    { label: "Open Food Facts", endpoint: `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
+    { label: "Open Beauty Facts", endpoint: `https://world.openbeautyfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
+    { label: "Open Pet Food Facts", endpoint: `https://world.openpetfoodfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
+  ];
+
+  for (const source of sources) {
+    const lookup = await fetchLookupCandidate(source.endpoint);
+    if (lookup.name) {
+      state.eanLookupCache[eanCode] = { name: lookup.name, source: source.label };
+      persistState();
+      return { name: lookup.name, source: source.label };
+    }
+  }
+
+  return { name: null, source: null };
+}
+
+async function fetchLookupCandidate(endpoint) {
   const timeoutController = new AbortController();
-  const timeoutId = setTimeout(() => timeoutController.abort(), 4500);
+  const timeoutId = setTimeout(() => timeoutController.abort(), 3500);
 
   try {
     const response = await fetch(endpoint, {
@@ -346,22 +392,67 @@ async function lookupProductNameByEan(eanCode) {
     }
 
     const data = await response.json();
-    const name =
-      data?.product?.product_name ||
-      data?.product?.generic_name ||
-      data?.product?.abbreviated_product_name ||
-      null;
+    const candidates = [
+      data?.product?.product_name,
+      data?.product?.product_name_en,
+      data?.product?.generic_name,
+      data?.product?.generic_name_en,
+      data?.product?.abbreviated_product_name,
+      data?.product?.brands,
+    ];
 
-    if (!name || !String(name).trim()) {
+    const name = candidates.find((value) => value && String(value).trim());
+    if (!name) {
       return { name: null };
     }
 
-    return { name: String(name).trim() };
+    return { name: cleanLookupName(String(name)) };
   } catch {
     return { name: null };
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+function cleanLookupName(value) {
+  return String(value)
+    .replace(/\s+/g, " ")
+    .replace(/^[\-–—\s]+|[\-–—\s]+$/g, "")
+    .trim();
+}
+
+function openConfirmScanModal() {
+  if (!state.pendingScannedItem) {
+    return;
+  }
+
+  elements.confirmScanCode.textContent = `Code: ${state.pendingScannedItem.sourceCode}`;
+  elements.confirmScanName.value = state.pendingScannedItem.name;
+  elements.confirmScanSource.textContent = state.pendingScannedItem.lookupMeta;
+  elements.confirmScanModal.showModal();
+  elements.confirmScanName.focus();
+  elements.confirmScanName.select();
+}
+
+function clearPendingScannedItem() {
+  state.pendingScannedItem = null;
+  if (elements.confirmScanModal.open) {
+    elements.confirmScanModal.close();
+  }
+}
+
+function confirmPendingScannedItem() {
+  if (!state.pendingScannedItem) {
+    return;
+  }
+
+  const confirmedName = elements.confirmScanName.value.trim() || `EAN ${state.pendingScannedItem.sourceCode}`;
+  addShoppingItem({
+    ...state.pendingScannedItem,
+    name: confirmedName,
+    meta: `${state.pendingScannedItem.meta} • ${state.pendingScannedItem.lookupMeta}`,
+  });
+  clearPendingScannedItem();
 }
 
 function isValidEan(code) {

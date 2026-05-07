@@ -57,6 +57,23 @@
       <p id="scan-status" class="helper-text">Point camera at an EAN barcode or NOEAN QR code.</p>
     </dialog>
 
+    <dialog id="confirm-scan-modal" class="scanner-modal confirm-modal">
+      <div class="scanner-header">
+        <h3>Confirm scanned item</h3>
+        <button id="confirm-scan-cancel-top" class="ghost-btn">Close</button>
+      </div>
+      <div class="confirm-grid">
+        <p id="confirm-scan-code" class="helper-text"></p>
+        <label class="confirm-label" for="confirm-scan-name">Product name</label>
+        <input id="confirm-scan-name" class="confirm-input" type="text" placeholder="Edit product name before adding" />
+        <p id="confirm-scan-source" class="helper-text"></p>
+        <div class="item-controls">
+          <button id="confirm-scan-cancel" class="ghost-btn">Cancel</button>
+          <button id="confirm-scan-add" class="primary-btn">Add to list</button>
+        </div>
+      </div>
+    </dialog>
+
     <script src="https://unpkg.com/html5-qrcode" defer></script>
     <script src="./app.js"></script>
   </body>

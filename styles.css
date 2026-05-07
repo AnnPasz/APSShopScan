@@ -306,6 +306,36 @@ body {
   padding: 0.5rem 0 0 !important;
 }
 
+.confirm-modal {
+  width: min(460px, 92vw);
+}
+
+.confirm-grid {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.confirm-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #344256;
+}
+
+.confirm-input {
+  width: 100%;
+  border: 1px solid #dbe5f2;
+  background: #ffffff;
+  color: #24344a;
+  border-radius: 0.75rem;
+  padding: 0.78rem 0.85rem;
+  font-size: 1rem;
+}
+
+.confirm-input:focus {
+  outline: 2px solid rgba(51, 182, 222, 0.24);
+  border-color: #8fd7ea;
+}
+
 @media (max-width: 420px) {
   .manual-form {
     flex-direction: column;
