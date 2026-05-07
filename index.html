@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>APS Home Shopping Manager</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <p class="brand">SHOPPING APP</p>
+        <h1>Manage your home shopping</h1>
+        <nav class="top-nav">
+          <button id="nav-shopping" class="nav-btn active">Shopping List</button>
+          <button id="nav-manual" class="nav-btn">No-EAN Items</button>
+        </nav>
+      </header>
+
+      <section id="shopping-view" class="view">
+        <div class="hero-card">
+          <div>
+            <p class="hero-title">Scan & Add</p>
+            <p class="helper-text">Use your camera to scan EAN/QR codes.</p>
+          </div>
+          <button id="add-scan-btn" class="primary-btn">Add</button>
+        </div>
+
+        <label class="lookup-toggle" for="ean-lookup-enabled">
+          <input id="ean-lookup-enabled" type="checkbox" checked />
+          <span>Try product name lookup from EAN (optional)</span>
+        </label>
+
+        <p id="lookup-status" class="helper-text"></p>
+
+        <ul id="shopping-list" class="shopping-list"></ul>
+      </section>
+
+      <section id="manual-view" class="view hidden">
+        <h2>Add product without EAN</h2>
+        <form id="manual-form" class="manual-form">
+          <input id="manual-name" type="text" placeholder="e.g. Bananas" required />
+          <button type="submit" class="primary-btn">Add no-EAN Item</button>
+        </form>
+        <p class="helper-text">Each item gets an ID and QR payload <code>NOEAN:&lt;id&gt;</code>.</p>
+
+        <ul id="manual-items" class="manual-items"></ul>
+      </section>
+    </main>
+
+    <dialog id="scanner-modal" class="scanner-modal">
+      <div class="scanner-header">
+        <h3>Scan barcode / QR</h3>
+        <button id="close-scan-btn" class="ghost-btn">Cancel</button>
+      </div>
+      <video id="camera-preview" autoplay playsinline muted></video>
+      <p id="scan-status" class="helper-text">Point camera at an EAN barcode or NOEAN QR code.</p>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
