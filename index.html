@@ -53,10 +53,11 @@
         <h3>Scan barcode / QR</h3>
         <button id="close-scan-btn" class="ghost-btn">Cancel</button>
       </div>
-      <video id="camera-preview" autoplay playsinline muted></video>
+      <div id="scanner-reader" class="scanner-reader"></div>
       <p id="scan-status" class="helper-text">Point camera at an EAN barcode or NOEAN QR code.</p>
     </dialog>
 
+    <script src="https://unpkg.com/html5-qrcode" defer></script>
     <script src="./app.js"></script>
   </body>
 </html>

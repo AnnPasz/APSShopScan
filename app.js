@@ -9,10 +9,8 @@ const state = {
   shoppingItems: [],
   manualItems: [],
   manualNextId: 1000,
-  stream: null,
   scanning: false,
-  detector: null,
-  scanLoopId: null,
+  scannerInstance: null,
   eanLookupEnabled: true,
 };
 
@@ -28,7 +26,7 @@ const elements = {
   manualItems: document.getElementById("manual-items"),
   scannerModal: document.getElementById("scanner-modal"),
   closeScanBtn: document.getElementById("close-scan-btn"),
-  cameraPreview: document.getElementById("camera-preview"),
+  scannerReader: document.getElementById("scanner-reader"),
   scanStatus: document.getElementById("scan-status"),
   eanLookupEnabled: document.getElementById("ean-lookup-enabled"),
   lookupStatus: document.getElementById("lookup-status"),
@@ -192,76 +190,86 @@ async function openScanner() {
     return;
   }
 
+  if (!("Html5Qrcode" in window)) {
+    alert("Scanner library is not loaded yet. Please wait a moment and try again.");
+    return;
+  }
+
   if (!("mediaDevices" in navigator) || !("getUserMedia" in navigator.mediaDevices)) {
     alert("Camera API not available in this browser.");
     return;
   }
 
-  if (!("BarcodeDetector" in window)) {
-    alert("Barcode scanning is not supported by this browser. Try Chrome/Edge on mobile.");
-    return;
-  }
-
   try {
-    state.detector = new BarcodeDetector({
-      formats: ["ean_13", "ean_8", "qr_code"],
-    });
-
-    state.stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: "environment" },
-      },
-      audio: false,
-    });
-
-    elements.cameraPreview.srcObject = state.stream;
     elements.scannerModal.showModal();
     state.scanning = true;
     elements.scanStatus.textContent = "Scanning... align barcode/QR inside frame.";
-    runScanLoop();
+    elements.scannerReader.innerHTML = "";
+
+    state.scannerInstance = new Html5Qrcode("scanner-reader");
+    await state.scannerInstance.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 240, height: 160 },
+        aspectRatio: 1.777778,
+        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.QR_CODE,
+        ],
+      },
+      async (decodedText, decodedResult) => {
+        if (!state.scanning) {
+          return;
+        }
+
+        const format = mapHtml5Format(decodedResult?.result?.format?.formatName);
+        if (await handleScanResult(decodedText || "", format)) {
+          await closeScanner();
+        }
+      },
+      () => {}
+    );
   } catch (error) {
     alert(`Could not open camera: ${error.message}`);
-    closeScanner();
+    await closeScanner();
   }
 }
 
-function closeScanner() {
+async function closeScanner() {
   state.scanning = false;
-  if (state.scanLoopId) {
-    cancelAnimationFrame(state.scanLoopId);
-    state.scanLoopId = null;
+
+  if (state.scannerInstance) {
+    try {
+      if (state.scannerInstance.isScanning) {
+        await state.scannerInstance.stop();
+      }
+      await state.scannerInstance.clear();
+    } catch {
+      elements.scannerReader.innerHTML = "";
+    }
+    state.scannerInstance = null;
   }
 
-  if (state.stream) {
-    state.stream.getTracks().forEach((track) => track.stop());
-    state.stream = null;
-  }
-
-  elements.cameraPreview.srcObject = null;
   if (elements.scannerModal.open) {
     elements.scannerModal.close();
   }
 }
 
-async function runScanLoop() {
-  if (!state.scanning || !state.detector) {
-    return;
+function mapHtml5Format(formatName) {
+  const normalized = String(formatName || "").toUpperCase();
+  if (normalized === "EAN_13") {
+    return "ean_13";
   }
-
-  try {
-    const barcodes = await state.detector.detect(elements.cameraPreview);
-    if (barcodes.length) {
-      const first = barcodes[0];
-      if (await handleScanResult(first.rawValue || "", first.format || "")) {
-        closeScanner();
-        return;
-      }
-    }
-  } catch {
-    elements.scanStatus.textContent = "Scanning...";
+  if (normalized === "EAN_8") {
+    return "ean_8";
   }
-
-  state.scanLoopId = requestAnimationFrame(runScanLoop);
+  if (normalized === "QR_CODE") {
+    return "qr_code";
+  }
+  return normalized.toLowerCase();
 }
 
 async function handleScanResult(rawValue, format) {

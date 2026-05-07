@@ -285,13 +285,25 @@ body {
   margin-bottom: 0.6rem;
 }
 
-#camera-preview {
+.scanner-reader {
   width: 100%;
   min-height: 240px;
   max-height: 50vh;
   border-radius: 0.7rem;
   border: 1px solid #d6e1f0;
   background: black;
+  overflow: hidden;
+}
+
+.scanner-reader video {
+  width: 100% !important;
+  height: auto !important;
+  object-fit: cover;
+}
+
+.scanner-reader__dashboard,
+#scanner-reader__dashboard_section {
+  padding: 0.5rem 0 0 !important;
 }
 
 @media (max-width: 420px) {
