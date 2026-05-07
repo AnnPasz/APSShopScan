@@ -748,16 +748,27 @@ function openDialog(dialog) {
     return;
   }
 
-  if (typeof dialog.showModal === "function") {
-    dialog.showModal();
-    return;
+  try {
+    if (typeof dialog.showModal === "function") {
+      dialog.showModal();
+      dialog.classList.remove("dialog-fallback-open");
+      return;
+    }
+  } catch (error) {
+    console.debug("showModal failed, using fallback", error);
   }
 
-  if (typeof dialog.show === "function") {
-    dialog.show();
-    return;
+  try {
+    if (typeof dialog.show === "function") {
+      dialog.show();
+      dialog.classList.remove("dialog-fallback-open");
+      return;
+    }
+  } catch (error) {
+    console.debug("show failed, using fallback", error);
   }
 
+  dialog.classList.add("dialog-fallback-open");
   dialog.setAttribute("open", "open");
 }
 
@@ -768,9 +779,11 @@ function closeDialog(dialog) {
 
   if (dialog.open && typeof dialog.close === "function") {
     dialog.close();
+    dialog.classList.remove("dialog-fallback-open");
     return;
   }
 
+  dialog.classList.remove("dialog-fallback-open");
   dialog.removeAttribute("open");
 }
 

@@ -1,12 +1,12 @@
 :root {
   color-scheme: light;
-  --bg: #f4f7fb;
+  --bg: #edf0f8;
   --panel: #ffffff;
-  --text: #1f2b3a;
-  --muted: #7f8ba0;
-  --primary: #ffbd2f;
-  --primary-strong: #f7ad00;
-  --accent: #33b6de;
+  --text: #202c3f;
+  --muted: #7684a0;
+  --primary: #b6ff2f;
+  --primary-strong: #9de61f;
+  --accent: #7f56ff;
   --danger: #ef5f5f;
   --ok: #2bb673;
 }
@@ -18,7 +18,7 @@
 
 body {
   margin: 0;
-  background: linear-gradient(180deg, #edf2f8, #f8fbff);
+  background: radial-gradient(circle at 10% 0%, #f5f7fd 0%, #e8edf7 45%, #e3e8f3 100%);
   color: var(--text);
 }
 
@@ -26,15 +26,15 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
-  padding: 1rem 0.9rem 1.6rem;
+  padding: 1.1rem 0.95rem 1.8rem;
 }
 
 .app-header {
-  background: var(--panel);
+  background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
   border-radius: 1rem;
-  box-shadow: 0 10px 30px rgba(56, 73, 98, 0.09);
-  border: 1px solid #e9eef6;
-  padding: 0.95rem;
+  box-shadow: 0 16px 36px rgba(53, 73, 110, 0.12);
+  border: 1px solid #e4eaf5;
+  padding: 1rem;
   margin-bottom: 0.9rem;
 }
 
@@ -49,15 +49,15 @@ body {
   margin: 0;
   font-size: 0.72rem;
   font-weight: 800;
-  color: #e9b12e;
+  color: #d9a11f;
   letter-spacing: 0.08em;
 }
 
 .lang-btn {
   width: 2.75rem;
   height: 2.75rem;
-  border: 1px solid #e1e7f2;
-  background: #f8fbff;
+  border: 1px solid #d5deef;
+  background: #eef3ff;
   border-radius: 999px;
   cursor: pointer;
   font-size: 1.2rem;
@@ -66,7 +66,7 @@ body {
 
 .app-header h1 {
   margin: 0.25rem 0 0.9rem;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
 }
 
 .top-nav {
@@ -87,31 +87,31 @@ body {
 
 .nav-btn {
   flex: 1;
-  background: #f2f5fb;
-  color: #64748a;
+  background: #eceff8;
+  color: #5f6f89;
   font-weight: 600;
 }
 
 .nav-btn.active {
-  background: var(--primary);
+  background: linear-gradient(135deg, #ffd44f 0%, #ffbd2f 100%);
   color: #513600;
 }
 
 .primary-btn {
-  background: var(--primary);
-  color: #573c04;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
+  color: #2f3a12;
   font-weight: 600;
-  box-shadow: 0 8px 16px rgba(255, 189, 47, 0.25);
+  box-shadow: 0 10px 22px rgba(150, 214, 33, 0.24);
 }
 
 .primary-btn:hover {
-  background: var(--primary-strong);
+  background: linear-gradient(135deg, #c4ff51 0%, #a6ed23 100%);
 }
 
 .ghost-btn {
-  background: #f2f5fb;
+  background: #eff3fb;
   color: #5e6d86;
-  border: 1px solid #e1e7f2;
+  border: 1px solid #d8e0ef;
 }
 
 .small-btn {
@@ -160,6 +160,8 @@ body {
   display: flex;
   gap: 0.5rem;
   justify-content: flex-start;
+  align-items: center;
+  flex-wrap: nowrap;
   margin-bottom: 0.75rem;
 }
 
@@ -177,8 +179,8 @@ body {
   justify-content: center;
   border-radius: 0.55rem;
   border: 1px solid rgba(177, 189, 208, 0.5);
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 4px 12px rgba(76, 96, 128, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 6px 14px rgba(70, 91, 128, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   color: #5f6f88;
   font-size: 0.95rem;
   backdrop-filter: blur(8px);
@@ -208,7 +210,7 @@ body {
 }
 
 .hero-card {
-  background: var(--panel);
+  background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
   border: 1px solid #e5ebf5;
   border-radius: 1rem;
   padding: 0.9rem;
@@ -217,7 +219,7 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 0.8rem;
-  box-shadow: 0 8px 24px rgba(44, 61, 89, 0.08);
+  box-shadow: 0 12px 26px rgba(48, 67, 102, 0.1);
 }
 
 .usb-card {
@@ -301,7 +303,7 @@ body {
 }
 
 .item-card {
-  background: var(--panel);
+  background: linear-gradient(135deg, #ffffff 0%, #f9fbff 100%);
   border: 1px solid #e4ebf5;
   border-radius: 0.92rem;
   padding: 0.8rem;
@@ -334,10 +336,14 @@ body {
 }
 
 @media (max-width: 480px) {
-  .list-actions,
   .hero-card {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .list-actions {
+    flex-direction: row;
+    justify-content: flex-start;
   }
 
   .usb-actions {
@@ -407,6 +413,20 @@ body {
   background: #ffffff;
   color: #24344a;
   padding: 0.8rem;
+  box-shadow: 0 22px 50px rgba(18, 29, 53, 0.35);
+}
+
+.scanner-modal[open] {
+  display: block;
+}
+
+.dialog-fallback-open {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  z-index: 9999;
 }
 
 .scanner-modal::backdrop {
