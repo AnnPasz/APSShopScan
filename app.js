@@ -779,7 +779,6 @@ function fillConfirmScanModal() {
 
   elements.confirmScanCode.textContent = t("confirmCode", { code: state.pendingScannedItem.sourceCode });
   elements.confirmScanName.value = state.pendingScannedItem.name;
-  elements.confirmScanSource.textContent = state.pendingScannedItem.lookupMeta;
 }
 
 function clearPendingScannedItem() {
