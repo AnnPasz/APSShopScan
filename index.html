@@ -21,6 +21,11 @@
       </header>
 
       <section id="shopping-view" class="view">
+        <div class="list-actions" aria-label="Akcje listy zakupów">
+          <button id="export-note-btn" class="ghost-btn" type="button">Eksportuj do notatki</button>
+          <button id="clear-list-btn" class="ghost-btn danger-btn" type="button">Wyczyść</button>
+        </div>
+
         <div class="hero-card">
           <div>
             <p id="camera-card-title" class="hero-title">Skanuj i dodaj</p>
@@ -29,23 +34,15 @@
           <button id="add-scan-btn" class="primary-btn">Aparat</button>
         </div>
 
-        <div class="hero-card usb-card">
+        <div class="hero-card usb-card usb-card-merged">
           <div>
             <p id="usb-card-title" class="hero-title">Skaner USB</p>
             <p id="usb-card-text" class="helper-text">Kliknij pole, zeskanuj kod i zatwierdź Enterem.</p>
+            <input id="usb-scan-input" class="confirm-input usb-inline-input" type="text" inputmode="numeric" autocomplete="off" placeholder="Zeskanuj lub wpisz kod EAN / NOEAN i naciśnij Enter" />
+            <p id="usb-status" class="helper-text"></p>
           </div>
           <button id="usb-focus-btn" class="ghost-btn" type="button">Aktywuj</button>
         </div>
-
-        <div class="usb-input-card">
-          <input id="usb-scan-input" class="confirm-input" type="text" inputmode="numeric" autocomplete="off" placeholder="Zeskanuj lub wpisz kod EAN / NOEAN i naciśnij Enter" />
-          <p id="usb-status" class="helper-text"></p>
-        </div>
-
-        <label class="lookup-toggle" for="ean-lookup-enabled">
-          <input id="ean-lookup-enabled" type="checkbox" checked />
-          <span id="lookup-toggle-label">Próbuj wyszukać nazwę produktu po EAN (opcjonalnie)</span>
-        </label>
 
         <p id="lookup-status" class="helper-text"></p>
 
@@ -82,7 +79,6 @@
         <p id="confirm-scan-code" class="helper-text"></p>
         <label id="confirm-name-label" class="confirm-label" for="confirm-scan-name">Nazwa produktu</label>
         <input id="confirm-scan-name" class="confirm-input" type="text" placeholder="W razie potrzeby popraw nazwę produktu" />
-        <p id="confirm-scan-source" class="helper-text"></p>
         <div class="item-controls">
           <button id="confirm-scan-cancel" class="ghost-btn">Anuluj</button>
           <button id="confirm-scan-add" class="primary-btn">Dodaj do listy</button>

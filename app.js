@@ -2,7 +2,6 @@ const STORAGE_KEYS = {
   shoppingItems: "aps-shopping-items",
   manualItems: "aps-manual-items",
   manualNextId: "aps-manual-next-id",
-  eanLookupEnabled: "aps-ean-lookup-enabled",
   eanLookupCache: "aps-ean-lookup-cache",
   language: "aps-language",
 };
@@ -24,15 +23,20 @@ const TRANSLATIONS = {
     usbReady: "Pole aktywne. Możesz skanować skanerem USB.",
     usbWaiting: "Czekam na skan z czytnika USB albo wpisanie kodu.",
     usbProcessing: "Przetwarzam zeskanowany kod...",
-    lookupToggleLabel: "Próbuj wyszukać nazwę produktu po EAN (opcjonalnie)",
-    lookupEnabled: "Wyszukiwanie nazwy po EAN jest włączone.",
-    lookupDisabled: "Wyszukiwanie nazwy po EAN jest wyłączone. Zostanie użyty kod EAN jako nazwa.",
+    exportNoteButton: "Eksportuj do notatki",
+    clearListButton: "Wyczyść",
+    clearListConfirm: "Usunąć wszystkie pozycje z listy zakupów?",
+    exportEmptyList: "Lista zakupów jest pusta.",
+    exportNoteTitle: "Lista zakupów",
+    exportShareTitle: "Eksportuj listę zakupów",
+    exportCopied: "Lista zakupów została skopiowana. Wklej ją do Notatek iOS.",
+    exportUnsupported: "Nie udało się wyeksportować listy. Skopiuj ją ręcznie później.",
+    lookupEnabled: "Wyszukiwanie nazwy po EAN jest zawsze włączone.",
     lookupSearching: "Szukam nazwy produktu dla EAN {code}...",
     lookupFound: "Znaleziono nazwę produktu: {name}",
     lookupNotFound: "Nie znaleziono pewnej nazwy dla EAN {code}. Potwierdź nazwę ręcznie.",
     lookupSuggestedBy: "Sugestia z: {source}",
     lookupNoReliable: "Nie znaleziono wiarygodnego dopasowania online",
-    lookupDisabledMeta: "Wyszukiwanie wyłączone",
     lookupSourceUser: "własne potwierdzenie",
     lookupCachedSuffix: " (z pamięci)",
     manualTitle: "Dodaj produkt bez EAN",
@@ -88,15 +92,20 @@ const TRANSLATIONS = {
     usbReady: "Field is active. You can scan with a USB barcode scanner.",
     usbWaiting: "Waiting for a USB scanner scan or typed code.",
     usbProcessing: "Processing scanned code...",
-    lookupToggleLabel: "Try product name lookup from EAN (optional)",
-    lookupEnabled: "EAN name lookup is enabled.",
-    lookupDisabled: "EAN name lookup is disabled. The EAN code will be used as the product name.",
+    exportNoteButton: "Export to Notes",
+    clearListButton: "Clear",
+    clearListConfirm: "Remove all items from the shopping list?",
+    exportEmptyList: "The shopping list is empty.",
+    exportNoteTitle: "Shopping List",
+    exportShareTitle: "Export shopping list",
+    exportCopied: "Shopping list copied. Paste it into iOS Notes.",
+    exportUnsupported: "Could not export the list. Please copy it manually later.",
+    lookupEnabled: "EAN name lookup is always enabled.",
     lookupSearching: "Looking up product name for EAN {code}...",
     lookupFound: "Found product name: {name}",
     lookupNotFound: "No reliable product name found for EAN {code}. Please confirm it manually.",
     lookupSuggestedBy: "Suggested by: {source}",
     lookupNoReliable: "No reliable online match found",
-    lookupDisabledMeta: "Lookup disabled",
     lookupSourceUser: "manual confirmation",
     lookupCachedSuffix: " (cached)",
     manualTitle: "Add product without EAN",
@@ -144,7 +153,6 @@ const state = {
   manualNextId: 1000,
   scanning: false,
   scannerInstance: null,
-  eanLookupEnabled: true,
   eanLookupCache: {},
   pendingScannedItem: null,
   language: "pl"
@@ -154,6 +162,8 @@ const elements = {
   brandLabel: document.getElementById("brand-label"),
   appTitle: document.getElementById("app-title"),
   languageToggle: document.getElementById("language-toggle"),
+  exportNoteBtn: document.getElementById("export-note-btn"),
+  clearListBtn: document.getElementById("clear-list-btn"),
   navShopping: document.getElementById("nav-shopping"),
   navManual: document.getElementById("nav-manual"),
   shoppingView: document.getElementById("shopping-view"),
@@ -173,8 +183,6 @@ const elements = {
   manualSubmitBtn: document.getElementById("manual-submit-btn"),
   manualHelp: document.getElementById("manual-help"),
   manualItems: document.getElementById("manual-items"),
-  lookupToggleLabel: document.getElementById("lookup-toggle-label"),
-  eanLookupEnabled: document.getElementById("ean-lookup-enabled"),
   lookupStatus: document.getElementById("lookup-status"),
   scannerModal: document.getElementById("scanner-modal"),
   scannerTitle: document.getElementById("scanner-title"),
@@ -186,7 +194,6 @@ const elements = {
   confirmScanCode: document.getElementById("confirm-scan-code"),
   confirmNameLabel: document.getElementById("confirm-name-label"),
   confirmScanName: document.getElementById("confirm-scan-name"),
-  confirmScanSource: document.getElementById("confirm-scan-source"),
   confirmScanAdd: document.getElementById("confirm-scan-add"),
   confirmScanCancel: document.getElementById("confirm-scan-cancel"),
   confirmScanCancelTop: document.getElementById("confirm-scan-cancel-top")
@@ -204,13 +211,14 @@ function init() {
 }
 
 function bindEvents() {
+  elements.exportNoteBtn.addEventListener("click", exportShoppingListToNotes);
+  elements.clearListBtn.addEventListener("click", clearShoppingList);
   elements.navShopping.addEventListener("click", () => showView("shopping"));
   elements.navManual.addEventListener("click", () => showView("manual"));
   elements.languageToggle.addEventListener("click", toggleLanguage);
   elements.addScanBtn.addEventListener("click", openScanner);
   elements.closeScanBtn.addEventListener("click", closeScanner);
   elements.manualForm.addEventListener("submit", onAddManualItem);
-  elements.eanLookupEnabled.addEventListener("change", onLookupToggleChanged);
   elements.confirmScanAdd.addEventListener("click", confirmPendingScannedItem);
   elements.confirmScanCancel.addEventListener("click", clearPendingScannedItem);
   elements.confirmScanCancelTop.addEventListener("click", clearPendingScannedItem);
@@ -228,24 +236,18 @@ function loadState() {
     state.manualNextId = nextId;
   }
 
-  const lookupRaw = localStorage.getItem(STORAGE_KEYS.eanLookupEnabled);
-  if (lookupRaw === "false") {
-    state.eanLookupEnabled = false;
-  }
+  localStorage.removeItem("aps-ean-lookup-enabled");
 
   const language = localStorage.getItem(STORAGE_KEYS.language);
   if (language && TRANSLATIONS[language]) {
     state.language = language;
   }
-
-  elements.eanLookupEnabled.checked = state.eanLookupEnabled;
 }
 
 function persistState() {
   localStorage.setItem(STORAGE_KEYS.shoppingItems, JSON.stringify(state.shoppingItems));
   localStorage.setItem(STORAGE_KEYS.manualItems, JSON.stringify(state.manualItems));
   localStorage.setItem(STORAGE_KEYS.manualNextId, String(state.manualNextId));
-  localStorage.setItem(STORAGE_KEYS.eanLookupEnabled, String(state.eanLookupEnabled));
   localStorage.setItem(STORAGE_KEYS.eanLookupCache, JSON.stringify(state.eanLookupCache));
   localStorage.setItem(STORAGE_KEYS.language, state.language);
 }
@@ -263,6 +265,8 @@ function applyLanguage() {
   document.title = t("pageTitle");
   elements.brandLabel.textContent = t("brand");
   elements.appTitle.textContent = t("appTitle");
+  elements.exportNoteBtn.textContent = t("exportNoteButton");
+  elements.clearListBtn.textContent = t("clearListButton");
   elements.navShopping.textContent = t("navShopping");
   elements.navManual.textContent = t("navManual");
   elements.cameraCardTitle.textContent = t("cameraCardTitle");
@@ -272,7 +276,6 @@ function applyLanguage() {
   elements.usbCardText.textContent = t("usbCardText");
   elements.usbFocusBtn.textContent = t("usbFocusButton");
   elements.usbScanInput.placeholder = t("usbPlaceholder");
-  elements.lookupToggleLabel.textContent = t("lookupToggleLabel");
   elements.manualTitle.textContent = t("manualTitle");
   elements.manualName.placeholder = t("manualPlaceholder");
   elements.manualSubmitBtn.textContent = t("manualSubmit");
@@ -311,14 +314,63 @@ function showView(view) {
   elements.navManual.classList.toggle("active", !isShopping);
 }
 
-function onLookupToggleChanged(event) {
-  state.eanLookupEnabled = event.currentTarget.checked;
+function setLookupStatusDefault() {
+  elements.lookupStatus.textContent = t("lookupEnabled");
+}
+
+async function exportShoppingListToNotes() {
+  if (!state.shoppingItems.length) {
+    alert(t("exportEmptyList"));
+    return;
+  }
+
+  const noteText = buildShoppingNoteText();
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: t("exportShareTitle"),
+        text: noteText
+      });
+      return;
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        console.debug("Share export failed:", error);
+      }
+    }
+  }
+
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(noteText);
+      alert(t("exportCopied"));
+      return;
+    } catch (error) {
+      console.debug("Clipboard export failed:", error);
+    }
+  }
+
+  alert(`${t("exportUnsupported")}\n\n${noteText}`);
+}
+
+function clearShoppingList() {
+  if (!state.shoppingItems.length) {
+    return;
+  }
+
+  if (!window.confirm(t("clearListConfirm"))) {
+    return;
+  }
+
+  state.shoppingItems = [];
   persistState();
+  renderShoppingList();
   setLookupStatusDefault();
 }
 
-function setLookupStatusDefault() {
-  elements.lookupStatus.textContent = state.eanLookupEnabled ? t("lookupEnabled") : t("lookupDisabled");
+function buildShoppingNoteText() {
+  const items = getSortedShoppingItems().map((item) => `- ${item.name} x${item.qty}`);
+  return [t("exportNoteTitle"), "", ...items].join("\n");
 }
 
 function focusUsbInput() {
@@ -578,18 +630,15 @@ async function handleScanResult(rawValue, format) {
     }
 
     let productName = `EAN ${code}`;
-    let lookupMeta = t("lookupDisabledMeta");
-    if (state.eanLookupEnabled) {
-      elements.lookupStatus.textContent = t("lookupSearching", { code });
-      const lookup = await lookupProductNameByEan(code);
-      if (lookup.name) {
-        productName = lookup.name;
-        lookupMeta = t("lookupSuggestedBy", { source: lookup.sourceLabel });
-        elements.lookupStatus.textContent = t("lookupFound", { name: lookup.name });
-      } else {
-        lookupMeta = t("lookupNoReliable");
-        elements.lookupStatus.textContent = t("lookupNotFound", { code });
-      }
+    let lookupMeta = t("lookupNoReliable");
+    elements.lookupStatus.textContent = t("lookupSearching", { code });
+    const lookup = await lookupProductNameByEan(code);
+    if (lookup.name) {
+      productName = lookup.name;
+      lookupMeta = t("lookupSuggestedBy", { source: lookup.sourceLabel });
+      elements.lookupStatus.textContent = t("lookupFound", { name: lookup.name });
+    } else {
+      elements.lookupStatus.textContent = t("lookupNotFound", { code });
     }
 
     state.pendingScannedItem = {
