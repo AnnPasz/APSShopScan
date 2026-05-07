@@ -74,7 +74,18 @@ const TRANSLATIONS = {
     printTitle: "Drukuj QR {id}",
     printIdLabel: "ID",
     printPayloadLabel: "Treść",
-    languageSwitchLabel: "Przełącz na angielski"
+    languageSwitchLabel: "Przełącz na angielski",
+    apiSettingsButton: "Ustawienia API",
+    apiSettingsTitle: "Ustawienia API EAN Search",
+    apiSettingsClose: "Zamknij",
+    apiTokenLabel: "Token API",
+    apiTokenPlaceholder: "Wklej token API EAN Search",
+    apiTokenSave: "Zapisz token",
+    apiTokenClear: "Wyczyść token",
+    apiSettingsStatusConnected: "EAN Search aktywny. Użyte zapytania: {used}.",
+    apiSettingsStatusMissing: "Brak tokenu. Używane są tylko darmowe źródła.",
+    apiTokenSaved: "Token API zapisany.",
+    apiTokenCleared: "Token API usunięty."
   },
   en: {
     pageTitle: "APS Shopping List",
@@ -141,7 +152,18 @@ const TRANSLATIONS = {
     printTitle: "Print QR {id}",
     printIdLabel: "ID",
     printPayloadLabel: "Payload",
-    languageSwitchLabel: "Switch to Polish"
+    languageSwitchLabel: "Switch to Polish",
+    apiSettingsButton: "API settings",
+    apiSettingsTitle: "EAN Search API settings",
+    apiSettingsClose: "Close",
+    apiTokenLabel: "API token",
+    apiTokenPlaceholder: "Paste your EAN Search API token",
+    apiTokenSave: "Save token",
+    apiTokenClear: "Clear token",
+    apiSettingsStatusConnected: "EAN Search enabled. Paid queries used: {used}.",
+    apiSettingsStatusMissing: "No token set. Only free sources are used.",
+    apiTokenSaved: "API token saved.",
+    apiTokenCleared: "API token cleared."
   }
 };
 
@@ -170,6 +192,7 @@ const elements = {
   languageToggle: document.getElementById("language-toggle"),
   exportNoteBtn: document.getElementById("export-note-btn"),
   clearListBtn: document.getElementById("clear-list-btn"),
+  apiSettingsBtn: document.getElementById("api-settings-btn"),
   navShopping: document.getElementById("nav-shopping"),
   navManual: document.getElementById("nav-manual"),
   shoppingView: document.getElementById("shopping-view"),
@@ -200,7 +223,15 @@ const elements = {
   confirmScanName: document.getElementById("confirm-scan-name"),
   confirmScanAdd: document.getElementById("confirm-scan-add"),
   confirmScanCancel: document.getElementById("confirm-scan-cancel"),
-  confirmScanCancelTop: document.getElementById("confirm-scan-cancel-top")
+  confirmScanCancelTop: document.getElementById("confirm-scan-cancel-top"),
+  apiSettingsModal: document.getElementById("api-settings-modal"),
+  apiSettingsTitle: document.getElementById("api-settings-title"),
+  apiSettingsStatus: document.getElementById("api-settings-status"),
+  apiSettingsCloseTop: document.getElementById("api-settings-close-top"),
+  apiTokenLabel: document.getElementById("api-token-label"),
+  apiTokenInput: document.getElementById("api-token-input"),
+  apiTokenSave: document.getElementById("api-token-save"),
+  apiTokenClear: document.getElementById("api-token-clear")
 };
 
 init();
@@ -217,6 +248,7 @@ function init() {
 function bindEvents() {
   elements.exportNoteBtn.addEventListener("click", exportShoppingListToNotes);
   elements.clearListBtn.addEventListener("click", clearShoppingList);
+  elements.apiSettingsBtn.addEventListener("click", openApiSettingsModal);
   elements.navShopping.addEventListener("click", () => showView("shopping"));
   elements.navManual.addEventListener("click", () => showView("manual"));
   elements.languageToggle.addEventListener("click", toggleLanguage);
@@ -226,6 +258,9 @@ function bindEvents() {
   elements.confirmScanAdd.addEventListener("click", confirmPendingScannedItem);
   elements.confirmScanCancel.addEventListener("click", clearPendingScannedItem);
   elements.confirmScanCancelTop.addEventListener("click", clearPendingScannedItem);
+  elements.apiSettingsCloseTop.addEventListener("click", closeApiSettingsModal);
+  elements.apiTokenSave.addEventListener("click", saveApiToken);
+  elements.apiTokenClear.addEventListener("click", clearApiToken);
   elements.usbFocusBtn.addEventListener("click", focusUsbInput);
   elements.usbScanInput.addEventListener("keydown", onUsbInputKeyDown);
   elements.usbScanInput.addEventListener("input", onUsbInputChange);
@@ -313,6 +348,8 @@ function applyLanguage() {
   elements.exportNoteBtn.title = t("exportNoteButton");
   elements.clearListBtn.setAttribute("aria-label", t("clearListButton"));
   elements.clearListBtn.title = t("clearListButton");
+  elements.apiSettingsBtn.setAttribute("aria-label", t("apiSettingsButton"));
+  elements.apiSettingsBtn.title = t("apiSettingsButton");
   elements.navShopping.textContent = t("navShopping");
   elements.navManual.textContent = t("navManual");
   elements.usbCardTitle.textContent = t("usbCardTitle");
@@ -334,6 +371,13 @@ function applyLanguage() {
   elements.confirmScanName.placeholder = t("confirmPlaceholder");
   elements.confirmScanCancel.textContent = t("confirmCancel");
   elements.confirmScanAdd.textContent = t("confirmAdd");
+  elements.apiSettingsTitle.textContent = t("apiSettingsTitle");
+  elements.apiSettingsCloseTop.textContent = t("apiSettingsClose");
+  elements.apiTokenLabel.textContent = t("apiTokenLabel");
+  elements.apiTokenInput.placeholder = t("apiTokenPlaceholder");
+  elements.apiTokenSave.textContent = t("apiTokenSave");
+  elements.apiTokenClear.textContent = t("apiTokenClear");
+  updateApiSettingsStatus();
   elements.languageToggle.textContent = state.language === "pl" ? "🇬🇧" : "🇵🇱";
   elements.languageToggle.setAttribute("aria-label", t("languageSwitchLabel"));
   elements.languageToggle.title = t("languageSwitchLabel");
@@ -728,6 +772,47 @@ function closeDialog(dialog) {
   }
 
   dialog.removeAttribute("open");
+}
+
+function updateApiSettingsStatus() {
+  if (!elements.apiSettingsStatus) {
+    return;
+  }
+
+  if (state.eanSearchApiToken) {
+    elements.apiSettingsStatus.textContent = t("apiSettingsStatusConnected", { used: state.eanSearchQueriesUsed });
+    return;
+  }
+
+  elements.apiSettingsStatus.textContent = t("apiSettingsStatusMissing");
+}
+
+function openApiSettingsModal() {
+  elements.apiTokenInput.value = state.eanSearchApiToken || "";
+  updateApiSettingsStatus();
+  openDialog(elements.apiSettingsModal);
+  elements.apiTokenInput.focus();
+  elements.apiTokenInput.select();
+}
+
+function closeApiSettingsModal() {
+  closeDialog(elements.apiSettingsModal);
+}
+
+function saveApiToken() {
+  const token = elements.apiTokenInput.value.trim();
+  state.eanSearchApiToken = token || null;
+  persistState();
+  updateApiSettingsStatus();
+  setUsbStatus(t("apiTokenSaved"));
+}
+
+function clearApiToken() {
+  state.eanSearchApiToken = null;
+  elements.apiTokenInput.value = "";
+  persistState();
+  updateApiSettingsStatus();
+  setUsbStatus(t("apiTokenCleared"));
 }
 
 function mapHtml5Format(formatName) {

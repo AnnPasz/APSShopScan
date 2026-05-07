@@ -24,6 +24,7 @@
         <div class="list-actions" aria-label="Akcje listy zakupów">
           <button id="export-note-btn" class="ghost-btn square-icon-btn" type="button" aria-label="Eksportuj do notatki" title="Eksportuj do notatki">⤴️</button>
           <button id="clear-list-btn" class="ghost-btn square-icon-btn danger-btn" type="button" aria-label="Wyczyść" title="Wyczyść">🗑️</button>
+          <button id="api-settings-btn" class="ghost-btn square-icon-btn" type="button" aria-label="Ustawienia API" title="Ustawienia API">⚙️</button>
         </div>
 
         <div class="hero-card usb-card usb-card-merged">
@@ -77,6 +78,22 @@
         <div class="item-controls">
           <button id="confirm-scan-cancel" class="ghost-btn">Anuluj</button>
           <button id="confirm-scan-add" class="primary-btn">Dodaj do listy</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="api-settings-modal" class="scanner-modal confirm-modal">
+      <div class="scanner-header">
+        <h3 id="api-settings-title">Ustawienia API EAN Search</h3>
+        <button id="api-settings-close-top" class="ghost-btn">Zamknij</button>
+      </div>
+      <div class="api-settings-grid">
+        <p id="api-settings-status" class="helper-text"></p>
+        <label id="api-token-label" class="confirm-label" for="api-token-input">Token API</label>
+        <input id="api-token-input" class="confirm-input" type="password" placeholder="Wklej token API EAN Search" autocomplete="off" />
+        <div class="item-controls">
+          <button id="api-token-clear" class="ghost-btn danger-btn" type="button">Wyczyść token</button>
+          <button id="api-token-save" class="primary-btn" type="button">Zapisz token</button>
         </div>
       </div>
     </dialog>

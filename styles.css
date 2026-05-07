@@ -450,6 +450,15 @@ body {
   gap: 0.7rem;
 }
 
+.api-settings-grid {
+  display: grid;
+  gap: 0.7rem;
+}
+
+#api-settings-status {
+  margin-bottom: 0.2rem;
+}
+
 .confirm-label {
   font-size: 0.88rem;
   font-weight: 600;
