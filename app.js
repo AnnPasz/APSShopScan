@@ -792,11 +792,11 @@ async function lookupProductNameByEan(eanCode) {
     // Tier 2: Barcode Lookup (UPC database, good for consumer products)
     { type: "barcodeLookup", label: "Barcode Lookup", endpoint: `https://api.barcodelookup.com/v3/products?barcode=${encodeURIComponent(eanCode)}&key=free` },
     // Tier 3: EAN Search (alternative UPC/EAN database)
-    { type: "eanSearch", label: "EAN Search", endpoint: `https://www.ean-search.org/?q=${encodeURIComponent(eanCode)}&format=json` },
+    { type: "eanSearch", label: "EAN Search", endpoint: `https://www.ean-search.org/api/1.0/?format=json&action=barcodeLookup&barcode=${encodeURIComponent(eanCode)}` },
     // Tier 4: Icecat (electronics/household products)
     { type: "icecat", label: "Icecat", endpoint: `https://icecat.biz/api/product/search?barcode=${encodeURIComponent(eanCode)}` },
-    // Tier 5: Universal Barcode Search - try direct search services
-    { type: "eanDb", label: "EAN DB", endpoint: `https://www.ean-search.org/api?q=${encodeURIComponent(eanCode)}&format=json` }
+    // Tier 5: Wikidata product lookup (universal knowledge base)
+    { type: "wikidata", label: "Wikidata", endpoint: `https://www.wikidata.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(`barcode:${eanCode}`)}&srnamespace=0` }
   ];
 
   for (const source of sources) {
@@ -852,8 +852,8 @@ async function fetchLookupCandidate(source) {
       name = extractEanSearchName(data);
     } else if (source.type === "icecat") {
       name = extractIcecatName(data);
-    } else if (source.type === "eanDb") {
-      name = extractEanSearchName(data);
+    } else if (source.type === "wikidata") {
+      name = extractWikidataName(data);
     }
 
     if (!name) {
@@ -920,6 +920,15 @@ function extractIcecatName(data) {
     return data.name;
   }
   return null;
+}
+
+function extractWikidataName(data) {
+  // Wikidata returns: { search: [{ title: "...", label: "..." }, ...] }
+  if (!data?.search || !Array.isArray(data.search) || data.search.length === 0) {
+    return null;
+  }
+  const result = data.search[0];
+  return result.label || result.title || result.description || null;
 }
 
 function extractUpcDatabaseName(data) {
