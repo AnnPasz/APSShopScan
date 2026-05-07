@@ -35,6 +35,8 @@ const TRANSLATIONS = {
     lookupSearching: "Szukam nazwy produktu dla EAN {code}...",
     lookupFound: "Znaleziono nazwę produktu: {name}",
     lookupNotFound: "Nie znaleziono pewnej nazwy dla EAN {code}. Potwierdź nazwę ręcznie.",
+    lookupPaidUnauthorized: "EAN Search odrzucił token (401). Sprawdź token API w ustawieniach.",
+    lookupPaidError: "EAN Search jest chwilowo niedostępny. Sprawdź token lub spróbuj ponownie.",
     lookupSuggestedBy: "Sugestia z: {source}",
     lookupNoReliable: "Nie znaleziono wiarygodnego dopasowania online",
     lookupSourceUser: "własne potwierdzenie",
@@ -113,6 +115,8 @@ const TRANSLATIONS = {
     lookupSearching: "Looking up product name for EAN {code}...",
     lookupFound: "Found product name: {name}",
     lookupNotFound: "No reliable product name found for EAN {code}. Please confirm it manually.",
+    lookupPaidUnauthorized: "EAN Search rejected your token (401). Check API token in settings.",
+    lookupPaidError: "EAN Search is temporarily unavailable. Check token and try again.",
     lookupSuggestedBy: "Suggested by: {source}",
     lookupNoReliable: "No reliable online match found",
     lookupSourceUser: "manual confirmation",
@@ -875,8 +879,16 @@ async function handleScanResult(rawValue, format) {
     } else {
       // Fallback: Use "Unknown Product" instead of "Not Found"
       productName = `Unknown Product (${code})`;
-      lookupMeta = t("lookupNotFound", { code });
-      elements.lookupStatus.textContent = t("lookupNotFound", { code });
+      if (lookup.errorCode === "paidUnauthorized") {
+        lookupMeta = t("lookupPaidUnauthorized");
+        elements.lookupStatus.textContent = t("lookupPaidUnauthorized");
+      } else if (lookup.errorCode === "paidFailed") {
+        lookupMeta = t("lookupPaidError");
+        elements.lookupStatus.textContent = t("lookupPaidError");
+      } else {
+        lookupMeta = t("lookupNotFound", { code });
+        elements.lookupStatus.textContent = t("lookupNotFound", { code });
+      }
     }
 
     state.pendingScannedItem = {
@@ -924,18 +936,12 @@ async function lookupProductNameByEan(eanCode) {
     };
   }
 
-  // FREE TIER (always first, no limits)
+  // FREE TIER (browser-safe CORS sources only)
   const freeSources = [
-    // Tier 1: Open Facts databases (most reliable, community-driven, FREE)
+    // Tier 1: Open Facts databases (CORS-friendly in browser)
     { type: "openFacts", label: "Open Food Facts", endpoint: `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
     { type: "openFacts", label: "Open Beauty Facts", endpoint: `https://world.openbeautyfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
-    { type: "openFacts", label: "Open Pet Food Facts", endpoint: `https://world.openpetfoodfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` },
-    // Tier 2: Barcode Lookup (UPC database, good for consumer products, FREE tier limited)
-    { type: "barcodeLookup", label: "Barcode Lookup", endpoint: `https://api.barcodelookup.com/v3/products?barcode=${encodeURIComponent(eanCode)}&key=free` },
-    // Tier 3: Icecat (electronics/household products, FREE)
-    { type: "icecat", label: "Icecat", endpoint: `https://icecat.biz/api/product/search?barcode=${encodeURIComponent(eanCode)}` },
-    // Tier 4: Wikidata product lookup (universal knowledge base, FREE, unlimited)
-    { type: "wikidata", label: "Wikidata", endpoint: `https://www.wikidata.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(`barcode:${eanCode}`)}&srnamespace=0` }
+    { type: "openFacts", label: "Open Pet Food Facts", endpoint: `https://world.openpetfoodfacts.org/api/v2/product/${encodeURIComponent(eanCode)}.json` }
   ];
 
   // Try free sources first
@@ -968,7 +974,11 @@ async function lookupProductNameByEan(eanCode) {
       return { name: paidLookup.name, sourceLabel: paidSource.label };
     }
 
-    return { name: null, sourceLabel: "EAN Search" };
+    if (paidLookup.errorCode === "paidUnauthorized") {
+      return { name: null, sourceLabel: "EAN Search", errorCode: "paidUnauthorized" };
+    }
+
+    return { name: null, sourceLabel: "EAN Search", errorCode: "paidFailed" };
   }
 
   return { name: null, sourceLabel: null };
@@ -995,7 +1005,10 @@ async function fetchLookupCandidate(source) {
     });
 
     if (!response.ok) {
-      return { name: null };
+      if (source.isPaid && response.status === 401) {
+        return { name: null, errorCode: "paidUnauthorized" };
+      }
+      return { name: null, errorCode: source.isPaid ? "paidFailed" : "freeFailed" };
     }
 
     if (source.isPaid) {
@@ -1020,13 +1033,13 @@ async function fetchLookupCandidate(source) {
     }
 
     if (!name) {
-      return { name: null };
+      return { name: null, errorCode: source.isPaid ? "paidFailed" : "freeFailed" };
     }
 
-    return { name: cleanLookupName(name) };
+    return { name: cleanLookupName(name), errorCode: null };
   } catch (error) {
     console.debug(`Fetch error for ${source.label}:`, error.message);
-    return { name: null };
+    return { name: null, errorCode: source.isPaid ? "paidFailed" : "freeFailed" };
   } finally {
     clearTimeout(timeoutId);
   }
