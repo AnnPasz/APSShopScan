@@ -159,11 +159,12 @@ body {
 .list-actions {
   display: flex;
   gap: 0.6rem;
+  justify-content: flex-end;
   margin-bottom: 0.75rem;
 }
 
 .list-actions > button {
-  flex: 1;
+  flex: 0 0 auto;
 }
 
 .hero-card {
@@ -189,6 +190,31 @@ body {
 
 .usb-card-merged > div {
   flex: 1;
+}
+
+.usb-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  justify-content: center;
+}
+
+.icon-btn {
+  width: 3rem;
+  min-width: 3rem;
+  min-height: 3rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.action-icon-btn {
+  width: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  font-size: 1.05rem;
 }
 
 .usb-inline-input {
@@ -257,8 +283,12 @@ body {
     align-items: stretch;
   }
 
+  .usb-actions {
+    flex-direction: row;
+  }
+
   .hero-card > button,
-  .list-actions > button {
+  .usb-actions > button {
     width: 100%;
   }
 }

@@ -22,16 +22,8 @@
 
       <section id="shopping-view" class="view">
         <div class="list-actions" aria-label="Akcje listy zakupów">
-          <button id="export-note-btn" class="ghost-btn" type="button">Eksportuj do notatki</button>
-          <button id="clear-list-btn" class="ghost-btn danger-btn" type="button">Wyczyść</button>
-        </div>
-
-        <div class="hero-card">
-          <div>
-            <p id="camera-card-title" class="hero-title">Skanuj i dodaj</p>
-            <p id="camera-card-text" class="helper-text">Użyj aparatu, aby skanować kody EAN i QR.</p>
-          </div>
-          <button id="add-scan-btn" class="primary-btn">Aparat</button>
+          <button id="export-note-btn" class="ghost-btn icon-btn action-icon-btn" type="button" aria-label="Eksportuj do notatki" title="Eksportuj do notatki">⤴️</button>
+          <button id="clear-list-btn" class="ghost-btn icon-btn action-icon-btn danger-btn" type="button" aria-label="Wyczyść" title="Wyczyść">🗑️</button>
         </div>
 
         <div class="hero-card usb-card usb-card-merged">
@@ -41,7 +33,10 @@
             <input id="usb-scan-input" class="confirm-input usb-inline-input" type="text" inputmode="numeric" autocomplete="off" placeholder="Zeskanuj lub wpisz kod EAN / NOEAN i naciśnij Enter" />
             <p id="usb-status" class="helper-text"></p>
           </div>
-          <button id="usb-focus-btn" class="ghost-btn" type="button">Aktywuj</button>
+          <div class="usb-actions">
+            <button id="usb-camera-btn" class="ghost-btn icon-btn" type="button" aria-label="Otwórz aparat" title="Otwórz aparat">📷</button>
+            <button id="usb-focus-btn" class="ghost-btn" type="button">Aktywuj</button>
+          </div>
         </div>
 
         <p id="lookup-status" class="helper-text"></p>

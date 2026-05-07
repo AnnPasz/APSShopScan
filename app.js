@@ -13,12 +13,10 @@ const TRANSLATIONS = {
     appTitle: "Zarządzaj domową listą zakupów",
     navShopping: "Lista zakupów",
     navManual: "Produkty bez EAN",
-    cameraCardTitle: "Skanuj i dodaj",
-    cameraCardText: "Użyj aparatu, aby skanować kody EAN i QR.",
-    cameraButton: "Aparat",
     usbCardTitle: "Skaner USB",
     usbCardText: "Kliknij pole, zeskanuj kod i zatwierdź Enterem.",
     usbFocusButton: "Aktywuj",
+    usbCameraButtonLabel: "Otwórz aparat",
     usbPlaceholder: "Zeskanuj lub wpisz kod EAN / NOEAN i naciśnij Enter",
     usbReady: "Pole aktywne. Możesz skanować skanerem USB.",
     usbWaiting: "Czekam na skan z czytnika USB albo wpisanie kodu.",
@@ -82,12 +80,10 @@ const TRANSLATIONS = {
     appTitle: "Manage your home shopping",
     navShopping: "Shopping List",
     navManual: "No-EAN Items",
-    cameraCardTitle: "Scan & Add",
-    cameraCardText: "Use your camera to scan EAN and QR codes.",
-    cameraButton: "Camera",
     usbCardTitle: "USB Scanner",
     usbCardText: "Click the field, scan the code, then confirm with Enter.",
     usbFocusButton: "Activate",
+    usbCameraButtonLabel: "Open camera",
     usbPlaceholder: "Scan or type EAN / NOEAN code and press Enter",
     usbReady: "Field is active. You can scan with a USB barcode scanner.",
     usbWaiting: "Waiting for a USB scanner scan or typed code.",
@@ -168,11 +164,9 @@ const elements = {
   navManual: document.getElementById("nav-manual"),
   shoppingView: document.getElementById("shopping-view"),
   manualView: document.getElementById("manual-view"),
-  cameraCardTitle: document.getElementById("camera-card-title"),
-  cameraCardText: document.getElementById("camera-card-text"),
-  addScanBtn: document.getElementById("add-scan-btn"),
   usbCardTitle: document.getElementById("usb-card-title"),
   usbCardText: document.getElementById("usb-card-text"),
+  usbCameraBtn: document.getElementById("usb-camera-btn"),
   usbFocusBtn: document.getElementById("usb-focus-btn"),
   usbScanInput: document.getElementById("usb-scan-input"),
   usbStatus: document.getElementById("usb-status"),
@@ -216,7 +210,7 @@ function bindEvents() {
   elements.navShopping.addEventListener("click", () => showView("shopping"));
   elements.navManual.addEventListener("click", () => showView("manual"));
   elements.languageToggle.addEventListener("click", toggleLanguage);
-  elements.addScanBtn.addEventListener("click", openScanner);
+  elements.usbCameraBtn.addEventListener("click", openScanner);
   elements.closeScanBtn.addEventListener("click", closeScanner);
   elements.manualForm.addEventListener("submit", onAddManualItem);
   elements.confirmScanAdd.addEventListener("click", confirmPendingScannedItem);
@@ -265,16 +259,17 @@ function applyLanguage() {
   document.title = t("pageTitle");
   elements.brandLabel.textContent = t("brand");
   elements.appTitle.textContent = t("appTitle");
-  elements.exportNoteBtn.textContent = t("exportNoteButton");
-  elements.clearListBtn.textContent = t("clearListButton");
+  elements.exportNoteBtn.setAttribute("aria-label", t("exportNoteButton"));
+  elements.exportNoteBtn.title = t("exportNoteButton");
+  elements.clearListBtn.setAttribute("aria-label", t("clearListButton"));
+  elements.clearListBtn.title = t("clearListButton");
   elements.navShopping.textContent = t("navShopping");
   elements.navManual.textContent = t("navManual");
-  elements.cameraCardTitle.textContent = t("cameraCardTitle");
-  elements.cameraCardText.textContent = t("cameraCardText");
-  elements.addScanBtn.textContent = t("cameraButton");
   elements.usbCardTitle.textContent = t("usbCardTitle");
   elements.usbCardText.textContent = t("usbCardText");
   elements.usbFocusBtn.textContent = t("usbFocusButton");
+  elements.usbCameraBtn.setAttribute("aria-label", t("usbCameraButtonLabel"));
+  elements.usbCameraBtn.title = t("usbCameraButtonLabel");
   elements.usbScanInput.placeholder = t("usbPlaceholder");
   elements.manualTitle.textContent = t("manualTitle");
   elements.manualName.placeholder = t("manualPlaceholder");
