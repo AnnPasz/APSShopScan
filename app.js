@@ -732,6 +732,9 @@ async function handleScanResult(rawValue, format) {
       lookupMeta = t("lookupSuggestedBy", { source: lookup.sourceLabel });
       elements.lookupStatus.textContent = t("lookupFound", { name: lookup.name });
     } else {
+      // Fallback: Use "Unknown Product" instead of "Not Found"
+      productName = `Unknown Product (${code})`;
+      lookupMeta = t("lookupNotFound", { code });
       elements.lookupStatus.textContent = t("lookupNotFound", { code });
     }
 
@@ -790,10 +793,10 @@ async function lookupProductNameByEan(eanCode) {
     { type: "barcodeLookup", label: "Barcode Lookup", endpoint: `https://api.barcodelookup.com/v3/products?barcode=${encodeURIComponent(eanCode)}&key=free` },
     // Tier 3: EAN Search (alternative UPC/EAN database)
     { type: "eanSearch", label: "EAN Search", endpoint: `https://www.ean-search.org/?q=${encodeURIComponent(eanCode)}&format=json` },
-    // Tier 4: UPC Database (universal product codes, includes paper/household)
-    { type: "upcDatabase", label: "UPC Database", endpoint: `https://api.upcdatabase.com/product/${encodeURIComponent(eanCode)}/` },
-    // Tier 5: ISBN/EAN/UPC resolver (Verhoeven's service - universal barcode lookup)
-    { type: "upcResolver", label: "UPC Resolver", endpoint: `https://upcresolver.com/code/${encodeURIComponent(eanCode)}/` }
+    // Tier 4: Icecat (electronics/household products)
+    { type: "icecat", label: "Icecat", endpoint: `https://icecat.biz/api/product/search?barcode=${encodeURIComponent(eanCode)}` },
+    // Tier 5: Universal Barcode Search - try direct search services
+    { type: "eanDb", label: "EAN DB", endpoint: `https://www.ean-search.org/api?q=${encodeURIComponent(eanCode)}&format=json` }
   ];
 
   for (const source of sources) {
@@ -820,7 +823,7 @@ function formatLookupSourceLabel(source, isCached = false) {
 
 async function fetchLookupCandidate(source) {
   const timeoutController = new AbortController();
-  const timeoutId = setTimeout(() => timeoutController.abort(), 5000); // Increased timeout to 5 seconds
+  const timeoutId = setTimeout(() => timeoutController.abort(), 3000); // 3 second timeout per API
 
   try {
     const response = await fetch(source.endpoint, {
@@ -828,7 +831,8 @@ async function fetchLookupCandidate(source) {
       signal: timeoutController.signal,
       headers: {
         "Accept": "application/json",
-        "User-Agent": "APSShopScan/1.0 (https://github.com/AnnPasz/APSShopScan)"
+        "User-Agent": "APSShopScan/1.0 (https://github.com/AnnPasz/APSShopScan)",
+        "Accept-Language": "en-US,en;q=0.9,pl;q=0.8"
       }
     });
 
@@ -846,10 +850,10 @@ async function fetchLookupCandidate(source) {
       name = extractBarcodeLookupName(data);
     } else if (source.type === "eanSearch") {
       name = extractEanSearchName(data);
-    } else if (source.type === "upcDatabase") {
-      name = extractUpcDatabaseName(data);
-    } else if (source.type === "upcResolver") {
-      name = extractUpcResolverName(data);
+    } else if (source.type === "icecat") {
+      name = extractIcecatName(data);
+    } else if (source.type === "eanDb") {
+      name = extractEanSearchName(data);
     }
 
     if (!name) {
@@ -897,6 +901,20 @@ function extractEanSearchName(data) {
   }
   if (data?.product?.name) {
     return data.product.name;
+  }
+  if (data?.name) {
+    return data.name;
+  }
+  return null;
+}
+
+function extractIcecatName(data) {
+  // Icecat returns array or object with product data
+  if (Array.isArray(data) && data.length > 0) {
+    return data[0].title || data[0].name || data[0].brand || null;
+  }
+  if (data?.title) {
+    return data.title;
   }
   if (data?.name) {
     return data.name;
