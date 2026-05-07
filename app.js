@@ -526,7 +526,7 @@ async function openScanner() {
     return;
   }
 
-  if (!("Html5Qrcode" in window)) {
+  if (typeof window.Html5Qrcode !== "function") {
     alert(t("scannerLibraryLoading"));
     return;
   }
@@ -537,25 +537,15 @@ async function openScanner() {
   }
 
   try {
-    elements.scannerModal.showModal();
+    openDialog(elements.scannerModal);
     state.scanning = true;
     elements.scanStatus.textContent = t("scannerRunning");
     elements.scannerReader.innerHTML = "";
 
-    state.scannerInstance = new Html5Qrcode("scanner-reader");
+    state.scannerInstance = new window.Html5Qrcode("scanner-reader");
     await state.scannerInstance.start(
       { facingMode: "environment" },
-      {
-        fps: 10,
-        qrbox: { width: 240, height: 160 },
-        aspectRatio: 1.777778,
-        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.QR_CODE
-        ]
-      },
+      buildScannerConfig(),
       async (decodedText, decodedResult) => {
         if (!state.scanning) {
           return;
@@ -577,6 +567,32 @@ async function openScanner() {
   }
 }
 
+function buildScannerConfig() {
+  const config = {
+        fps: 10,
+        qrbox: { width: 240, height: 160 },
+        aspectRatio: 1.777778
+  };
+
+  const scanTypes = window.Html5QrcodeScanType;
+  if (scanTypes?.SCAN_TYPE_CAMERA) {
+    config.supportedScanTypes = [scanTypes.SCAN_TYPE_CAMERA];
+  }
+
+  const formats = window.Html5QrcodeSupportedFormats;
+  if (formats) {
+    config.formatsToSupport = [
+      formats.EAN_13,
+      formats.EAN_8,
+      formats.UPC_A,
+      formats.UPC_E,
+      formats.QR_CODE
+    ].filter(Boolean);
+  }
+
+  return config;
+}
+
 async function closeScanner() {
   state.scanning = false;
 
@@ -592,11 +608,40 @@ async function closeScanner() {
     state.scannerInstance = null;
   }
 
-  if (elements.scannerModal.open) {
-    elements.scannerModal.close();
-  }
+  closeDialog(elements.scannerModal);
 
   elements.scanStatus.textContent = t("scannerDefaultStatus");
+}
+
+function openDialog(dialog) {
+  if (!dialog) {
+    return;
+  }
+
+  if (typeof dialog.showModal === "function") {
+    dialog.showModal();
+    return;
+  }
+
+  if (typeof dialog.show === "function") {
+    dialog.show();
+    return;
+  }
+
+  dialog.setAttribute("open", "open");
+}
+
+function closeDialog(dialog) {
+  if (!dialog) {
+    return;
+  }
+
+  if (dialog.open && typeof dialog.close === "function") {
+    dialog.close();
+    return;
+  }
+
+  dialog.removeAttribute("open");
 }
 
 function mapHtml5Format(formatName) {
@@ -605,6 +650,12 @@ function mapHtml5Format(formatName) {
     return "ean_13";
   }
   if (normalized === "EAN_8") {
+    return "ean_8";
+  }
+  if (normalized === "UPC_A") {
+    return "ean_13";
+  }
+  if (normalized === "UPC_E") {
     return "ean_8";
   }
   if (normalized === "QR_CODE") {
@@ -816,7 +867,7 @@ function openConfirmScanModal() {
   }
 
   fillConfirmScanModal();
-  elements.confirmScanModal.showModal();
+  openDialog(elements.confirmScanModal);
   elements.confirmScanName.focus();
   elements.confirmScanName.select();
 }
@@ -832,9 +883,7 @@ function fillConfirmScanModal() {
 
 function clearPendingScannedItem() {
   state.pendingScannedItem = null;
-  if (elements.confirmScanModal.open) {
-    elements.confirmScanModal.close();
-  }
+  closeDialog(elements.confirmScanModal);
 }
 
 function confirmPendingScannedItem() {
