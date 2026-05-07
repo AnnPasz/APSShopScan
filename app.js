@@ -45,6 +45,11 @@ const TRANSLATIONS = {
     manualPlaceholder: "np. Banany",
     manualSubmit: "Dodaj produkt bez EAN",
     manualHelp: "Każdy produkt dostaje ID i kod QR z treścią NOEAN:<id>.",
+    manualEdit: "Edytuj",
+    manualDelete: "Usuń",
+    manualEditPrompt: "Edytuj nazwę produktu bez EAN:",
+    manualDeleteConfirm: "Usunąć ten produkt bez EAN?",
+    manualNameRequired: "Nazwa produktu nie może być pusta.",
     printAllQr: "Drukuj wszystkie kody QR",
     printAllQrEmpty: "Brak produktów bez EAN do wydruku.",
     printAllTitle: "Drukuj wszystkie kody QR",
@@ -128,6 +133,11 @@ const TRANSLATIONS = {
     manualPlaceholder: "e.g. Bananas",
     manualSubmit: "Add no-EAN item",
     manualHelp: "Each product gets an ID and QR content NOEAN:<id>.",
+    manualEdit: "Edit",
+    manualDelete: "Delete",
+    manualEditPrompt: "Edit no-EAN product name:",
+    manualDeleteConfirm: "Delete this no-EAN product?",
+    manualNameRequired: "Product name cannot be empty.",
     printAllQr: "Print all QR codes",
     printAllQrEmpty: "No no-EAN products to print.",
     printAllTitle: "Print all QR codes",
@@ -1303,6 +1313,8 @@ function renderManualItems() {
           <div class="item-controls">
             <button class="small-btn" data-manual-add="${item.id}">${escapeHtml(t("addToList"))}</button>
             <button class="small-btn" data-manual-print="${item.id}">${escapeHtml(t("printQr"))}</button>
+            <button class="small-btn" data-manual-edit="${item.id}">${escapeHtml(t("manualEdit"))}</button>
+            <button class="small-btn danger" data-manual-delete="${item.id}">${escapeHtml(t("manualDelete"))}</button>
           </div>
         </li>
       `;
@@ -1338,6 +1350,57 @@ function renderManualItems() {
       printQr(item);
     });
   });
+
+  elements.manualItems.querySelectorAll("[data-manual-edit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = Number(button.dataset.manualEdit);
+      editManualItem(id);
+    });
+  });
+
+  elements.manualItems.querySelectorAll("[data-manual-delete]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = Number(button.dataset.manualDelete);
+      deleteManualItem(id);
+    });
+  });
+}
+
+function editManualItem(id) {
+  const item = state.manualItems.find((entry) => entry.id === id);
+  if (!item) {
+    return;
+  }
+
+  const updatedName = window.prompt(t("manualEditPrompt"), item.name);
+  if (updatedName === null) {
+    return;
+  }
+
+  const trimmedName = updatedName.trim();
+  if (!trimmedName) {
+    alert(t("manualNameRequired"));
+    return;
+  }
+
+  item.name = trimmedName;
+  persistState();
+  renderManualItems();
+}
+
+function deleteManualItem(id) {
+  const index = state.manualItems.findIndex((entry) => entry.id === id);
+  if (index === -1) {
+    return;
+  }
+
+  if (!window.confirm(t("manualDeleteConfirm"))) {
+    return;
+  }
+
+  state.manualItems.splice(index, 1);
+  persistState();
+  renderManualItems();
 }
 
 function buildQrUrl(data) {
