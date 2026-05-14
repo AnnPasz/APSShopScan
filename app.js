@@ -285,6 +285,9 @@ const elements = {
   apiTokenInput: document.getElementById("api-token-input"),
   apiTokenSave: document.getElementById("api-token-save"),
   apiTokenClear: document.getElementById("api-token-clear"),
+  categoriesModal: document.getElementById("categories-modal"),
+  categoriesModalTitle: document.getElementById("categories-modal-title"),
+  categoriesModalClose: document.getElementById("categories-modal-close"),
   confirmCategoryLabel: document.getElementById("confirm-category-label"),
   confirmScanCategory: document.getElementById("confirm-scan-category"),
   categoriesSectionTitle: document.getElementById("categories-section-title"),
@@ -308,7 +311,7 @@ function init() {
 function bindEvents() {
   elements.exportNoteBtn.addEventListener("click", exportShoppingListToNotes);
   elements.clearListBtn.addEventListener("click", clearShoppingList);
-  bindCategoriesButtonEvents();
+  elements.categoriesBtn.addEventListener("click", openCategoriesModal);
   elements.apiSettingsBtn.addEventListener("click", openApiSettingsModal);
   elements.navShopping.addEventListener("click", () => showView("shopping"));
   elements.navManual.addEventListener("click", () => showView("manual"));
@@ -323,23 +326,11 @@ function bindEvents() {
   elements.apiSettingsCloseTop.addEventListener("click", closeApiSettingsModal);
   elements.apiTokenSave.addEventListener("click", saveApiToken);
   elements.apiTokenClear.addEventListener("click", clearApiToken);
+  elements.categoriesModalClose.addEventListener("click", closeCategoriesModal);
   elements.usbFocusBtn.addEventListener("click", focusUsbInput);
   elements.usbScanInput.addEventListener("keydown", onUsbInputKeyDown);
   elements.usbScanInput.addEventListener("input", onUsbInputChange);
   elements.addCategoryBtn.addEventListener("click", onAddCategory);
-}
-
-function bindCategoriesButtonEvents() {
-  if (!elements.categoriesBtn) {
-    return;
-  }
-
-  elements.categoriesBtn.addEventListener("click", openCategoriesModal);
-
-  elements.categoriesBtn.addEventListener("touchend", (event) => {
-    event.preventDefault();
-    openCategoriesModal();
-  }, { passive: false });
 }
 
 function loadState() {
@@ -465,6 +456,8 @@ function applyLanguage() {
   elements.apiTokenInput.placeholder = t("apiTokenPlaceholder");
   elements.apiTokenSave.textContent = t("apiTokenSave");
   elements.apiTokenClear.textContent = t("apiTokenClear");
+  elements.categoriesModalTitle.textContent = t("categoriesModalTitle");
+  elements.categoriesModalClose.textContent = t("categoriesModalClose");
   elements.confirmCategoryLabel.textContent = t("confirmCategoryLabel");
   elements.categoriesSectionTitle.textContent = t("categoriesSectionTitle");
   elements.newCategoryName.placeholder = t("addCategoryPlaceholder");
@@ -925,7 +918,6 @@ function updateApiSettingsStatus() {
 function openApiSettingsModal() {
   elements.apiTokenInput.value = state.eanSearchApiToken || "";
   updateApiSettingsStatus();
-  renderCategoriesInUI();
   openDialog(elements.apiSettingsModal);
   elements.apiTokenInput.focus();
   elements.apiTokenInput.select();
@@ -936,10 +928,15 @@ function closeApiSettingsModal() {
 }
 
 function openCategoriesModal() {
-  openApiSettingsModal();
+  renderCategoriesInUI();
+  openDialog(elements.categoriesModal);
   if (elements.newCategoryName) {
     elements.newCategoryName.focus();
   }
+}
+
+function closeCategoriesModal() {
+  closeDialog(elements.categoriesModal);
 }
 
 function saveApiToken() {
