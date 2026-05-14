@@ -19,9 +19,14 @@
 
 body {
   margin: 0;
-  background-color: #edf08b;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 320'%3E%3Ctext x='2' y='40' font-size='52'%3E🥬%3C/text%3E%3Ctext x='118' y='34' font-size='42'%3E🥕%3C/text%3E%3Ctext x='214' y='56' font-size='52'%3E🍆%3C/text%3E%3Ctext x='62' y='132' font-size='56'%3E🥭%3C/text%3E%3Ctext x='196' y='142' font-size='58'%3E🥑%3C/text%3E%3Ctext x='110' y='214' font-size='56'%3E🍉%3C/text%3E%3Ctext x='18' y='292' font-size='58'%3E🥬%3C/text%3E%3Ctext x='176' y='292' font-size='42'%3E🥕%3C/text%3E%3Ctext x='252' y='252' font-size='56'%3E🥭%3C/text%3E%3C/svg%3E");
-  background-size: 320px 320px;
+  min-height: 100vh;
+  background-color: #eef19a;
+  background-image:
+    radial-gradient(circle at 15% 15%, rgba(255, 255, 255, 0.42) 0, rgba(255, 255, 255, 0) 22%),
+    radial-gradient(circle at 85% 8%, rgba(255, 244, 178, 0.38) 0, rgba(255, 244, 178, 0) 18%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.08) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 360'%3E%3Cg opacity='0.88'%3E%3Ctext x='4' y='52' font-size='54'%3E🥬%3C/text%3E%3Ctext x='138' y='42' font-size='42'%3E🥕%3C/text%3E%3Ctext x='236' y='62' font-size='54'%3E🍆%3C/text%3E%3Ctext x='70' y='152' font-size='58'%3E🥭%3C/text%3E%3Ctext x='222' y='156' font-size='58'%3E🥑%3C/text%3E%3Ctext x='124' y='244' font-size='58'%3E🍉%3C/text%3E%3Ctext x='14' y='334' font-size='58'%3E🥬%3C/text%3E%3Ctext x='196' y='330' font-size='42'%3E🥕%3C/text%3E%3Ctext x='272' y='286' font-size='58'%3E🥭%3C/text%3E%3C/g%3E%3C/svg%3E");
+  background-size: auto, auto, auto, 360px 360px;
   background-repeat: repeat;
   background-attachment: fixed;
   color: var(--text);
@@ -32,6 +37,7 @@ body {
   margin: 0 auto;
   min-height: 100vh;
   padding: 1rem 0.95rem 2rem;
+  position: relative;
 }
 
 .app-header {
@@ -161,7 +167,7 @@ body {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 .list-actions {
