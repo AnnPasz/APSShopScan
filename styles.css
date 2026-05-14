@@ -213,6 +213,17 @@ body {
   background: rgba(255, 112, 135, 0.18);
 }
 
+.apple-share-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  display: block;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .hero-card {
   background: linear-gradient(145deg, #23244a 0%, #1a1b37 100%);
   border: 1px solid rgba(165, 178, 255, 0.2);

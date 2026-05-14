@@ -311,7 +311,7 @@ function init() {
 function bindEvents() {
   elements.exportNoteBtn.addEventListener("click", exportShoppingListToNotes);
   elements.clearListBtn.addEventListener("click", clearShoppingList);
-  elements.categoriesBtn.addEventListener("click", openCategoriesModal);
+  bindCategoriesButtonEvents();
   elements.apiSettingsBtn.addEventListener("click", openApiSettingsModal);
   elements.navShopping.addEventListener("click", () => showView("shopping"));
   elements.navManual.addEventListener("click", () => showView("manual"));
@@ -331,6 +331,19 @@ function bindEvents() {
   elements.usbScanInput.addEventListener("keydown", onUsbInputKeyDown);
   elements.usbScanInput.addEventListener("input", onUsbInputChange);
   elements.addCategoryBtn.addEventListener("click", onAddCategory);
+}
+
+function bindCategoriesButtonEvents() {
+  if (!elements.categoriesBtn) {
+    return;
+  }
+
+  elements.categoriesBtn.addEventListener("click", openCategoriesModal);
+
+  elements.categoriesBtn.addEventListener("touchend", (event) => {
+    event.preventDefault();
+    openCategoriesModal();
+  }, { passive: false });
 }
 
 function loadState() {
@@ -928,9 +941,16 @@ function closeApiSettingsModal() {
 }
 
 function openCategoriesModal() {
+  if (!elements.categoriesModal) {
+    openApiSettingsModal();
+    return;
+  }
+
   renderCategoriesInUI();
   openDialog(elements.categoriesModal);
-  elements.newCategoryName.focus();
+  if (elements.newCategoryName) {
+    elements.newCategoryName.focus();
+  }
 }
 
 function closeCategoriesModal() {
