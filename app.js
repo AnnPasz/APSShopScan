@@ -285,9 +285,6 @@ const elements = {
   apiTokenInput: document.getElementById("api-token-input"),
   apiTokenSave: document.getElementById("api-token-save"),
   apiTokenClear: document.getElementById("api-token-clear"),
-  categoriesModal: document.getElementById("categories-modal"),
-  categoriesModalTitle: document.getElementById("categories-modal-title"),
-  categoriesModalClose: document.getElementById("categories-modal-close"),
   confirmCategoryLabel: document.getElementById("confirm-category-label"),
   confirmScanCategory: document.getElementById("confirm-scan-category"),
   categoriesSectionTitle: document.getElementById("categories-section-title"),
@@ -326,7 +323,6 @@ function bindEvents() {
   elements.apiSettingsCloseTop.addEventListener("click", closeApiSettingsModal);
   elements.apiTokenSave.addEventListener("click", saveApiToken);
   elements.apiTokenClear.addEventListener("click", clearApiToken);
-  elements.categoriesModalClose.addEventListener("click", closeCategoriesModal);
   elements.usbFocusBtn.addEventListener("click", focusUsbInput);
   elements.usbScanInput.addEventListener("keydown", onUsbInputKeyDown);
   elements.usbScanInput.addEventListener("input", onUsbInputChange);
@@ -469,8 +465,6 @@ function applyLanguage() {
   elements.apiTokenInput.placeholder = t("apiTokenPlaceholder");
   elements.apiTokenSave.textContent = t("apiTokenSave");
   elements.apiTokenClear.textContent = t("apiTokenClear");
-  elements.categoriesModalTitle.textContent = t("categoriesModalTitle");
-  elements.categoriesModalClose.textContent = t("categoriesModalClose");
   elements.confirmCategoryLabel.textContent = t("confirmCategoryLabel");
   elements.categoriesSectionTitle.textContent = t("categoriesSectionTitle");
   elements.newCategoryName.placeholder = t("addCategoryPlaceholder");
@@ -931,6 +925,7 @@ function updateApiSettingsStatus() {
 function openApiSettingsModal() {
   elements.apiTokenInput.value = state.eanSearchApiToken || "";
   updateApiSettingsStatus();
+  renderCategoriesInUI();
   openDialog(elements.apiSettingsModal);
   elements.apiTokenInput.focus();
   elements.apiTokenInput.select();
@@ -941,20 +936,10 @@ function closeApiSettingsModal() {
 }
 
 function openCategoriesModal() {
-  if (!elements.categoriesModal) {
-    openApiSettingsModal();
-    return;
-  }
-
-  renderCategoriesInUI();
-  openDialog(elements.categoriesModal);
+  openApiSettingsModal();
   if (elements.newCategoryName) {
     elements.newCategoryName.focus();
   }
-}
-
-function closeCategoriesModal() {
-  closeDialog(elements.categoriesModal);
 }
 
 function saveApiToken() {
