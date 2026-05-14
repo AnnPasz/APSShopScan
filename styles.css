@@ -810,6 +810,33 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+#categories-modal .api-settings-grid {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  max-height: 65vh;
+  overflow: hidden;
+}
+
+#categories-modal #categories-section-title {
+  grid-row: 1;
+}
+
+#categories-modal .categories-list {
+  grid-row: 2;
+  max-height: none;
+  overflow-y: auto;
+  margin-bottom: 0;
+}
+
+#categories-modal .add-category-form {
+  grid-row: 3;
+  border-top: 1px solid rgba(164, 172, 255, 0.2);
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
 }
 
 .confirm-select {

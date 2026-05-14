@@ -1047,9 +1047,6 @@ function closeApiSettingsModal() {
 function openCategoriesModal() {
   renderCategoriesInUI();
   openDialog(elements.categoriesModal);
-  if (elements.newCategoryName) {
-    elements.newCategoryName.focus();
-  }
 }
 
 function closeCategoriesModal() {
