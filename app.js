@@ -107,8 +107,16 @@ const TRANSLATIONS = {
     categoryAdded: "Kategoria '{name}' została dodana.",
     categoryDeleted: "Kategoria '{name}' została usunięta.",
     categoryColorUpdated: "Kolor kategorii '{name}' został zaktualizowany.",
+    categoryMovedUp: "Kategoria '{name}' została przesunięta w górę.",
+    categoryMovedDown: "Kategoria '{name}' została przesunięta w dół.",
     editCategory: "Edytuj",
+    saveCategory: "Zapisz",
+    cancelEdit: "Anuluj",
+    showColorPalette: "Pokaż paletę kolorów",
+    hideColorPalette: "Ukryj paletę kolorów",
     deleteCategory: "Usuń",
+    moveCategoryUp: "Przesuń w górę",
+    moveCategoryDown: "Przesuń w dół",
     confirmDeleteCategory: "Usunąć kategorię '{name}'? Produkty będą miały kategorię 'Inne'.",
     categoryOther: "Inne"
   },
@@ -209,8 +217,16 @@ const TRANSLATIONS = {
     categoryAdded: "Category '{name}' added.",
     categoryDeleted: "Category '{name}' deleted.",
     categoryColorUpdated: "Category '{name}' color updated.",
+    categoryMovedUp: "Category '{name}' moved up.",
+    categoryMovedDown: "Category '{name}' moved down.",
     editCategory: "Edit",
+    saveCategory: "Save",
+    cancelEdit: "Cancel",
+    showColorPalette: "Show color palette",
+    hideColorPalette: "Hide color palette",
     deleteCategory: "Delete",
+    moveCategoryUp: "Move up",
+    moveCategoryDown: "Move down",
     confirmDeleteCategory: "Delete category '{name}'? Products will be set to 'Other'.",
     categoryOther: "Other"
   }
@@ -244,6 +260,14 @@ const CATEGORY_COLOR_PALETTE = [
   "#06d6a0", "#2a9d8f", "#8ac926", "#c0f000", "#f1fa8c",
   "#adb5bd", "#6c757d", "#495057", "#264653", "#1d3557"
 ];
+
+const categoryUiState = {
+  addPaletteOpen: false,
+  editingCategoryId: null,
+  editNameDraft: "",
+  editColorDraft: CATEGORY_COLOR_PALETTE[0],
+  editPaletteOpen: false
+};
 
 const elements = {
   brandLabel: document.getElementById("brand-label"),
@@ -303,6 +327,8 @@ const elements = {
   newCategoryName: document.getElementById("new-category-name"),
   newCategoryColor: document.getElementById("new-category-color"),
   newCategoryPalette: document.getElementById("new-category-palette"),
+  newCategoryColorToggle: document.getElementById("new-category-color-toggle"),
+  newCategoryColorPreview: document.getElementById("new-category-color-preview"),
   addCategoryBtn: document.getElementById("add-category-btn")
 };
 
@@ -339,6 +365,7 @@ function bindEvents() {
   elements.usbFocusBtn.addEventListener("click", focusUsbInput);
   elements.usbScanInput.addEventListener("keydown", onUsbInputKeyDown);
   elements.usbScanInput.addEventListener("input", onUsbInputChange);
+  elements.newCategoryColorToggle.addEventListener("click", toggleNewCategoryPalette);
   elements.addCategoryBtn.addEventListener("click", onAddCategory);
 }
 
@@ -487,6 +514,8 @@ function applyLanguage() {
   elements.confirmCategoryLabel.textContent = t("confirmCategoryLabel");
   elements.categoriesSectionTitle.textContent = t("categoriesSectionTitle");
   elements.newCategoryName.placeholder = t("addCategoryPlaceholder");
+  elements.newCategoryColorToggle.setAttribute("aria-label", categoryUiState.addPaletteOpen ? t("hideColorPalette") : t("showColorPalette"));
+  elements.newCategoryColorToggle.title = categoryUiState.addPaletteOpen ? t("hideColorPalette") : t("showColorPalette");
   elements.addCategoryBtn.textContent = t("addCategoryBtn");
   updateApiSettingsStatus();
   elements.languageToggle.textContent = state.language === "pl" ? "🇬🇧" : "🇵🇱";
@@ -571,12 +600,21 @@ function clearShoppingList() {
 }
 
 function buildShoppingNoteText() {
-  const items = getSortedShoppingItems().map((item) => {
-    const category = getCategoryById(item.categoryId);
-    const categoryLabel = category ? ` [${category.name}]` : "";
-    return `- ${item.name} x${item.qty}${categoryLabel}`;
+  const lines = [t("exportNoteTitle"), ""];
+  const groupedItems = getGroupedShoppingItems();
+
+  groupedItems.forEach((group, index) => {
+    lines.push(group.category.name);
+    group.items.forEach((item) => {
+      lines.push(`- ${item.name} x${item.qty}`);
+    });
+
+    if (index < groupedItems.length - 1) {
+      lines.push("");
+    }
   });
-  return [t("exportNoteTitle"), "", ...items].join("\n");
+
+  return lines.join("\n");
 }
 
 function focusUsbInput() {
@@ -691,10 +729,54 @@ function renderAll() {
   renderManualItems();
 }
 
+function getSortedCategories() {
+  return state.categories.slice().sort((a, b) => a.order - b.order);
+}
+
+function getCategorySortOrder(categoryId) {
+  const category = getCategoryById(categoryId) || getOtherCategory();
+  return category?.order ?? Number.MAX_SAFE_INTEGER;
+}
+
 function getSortedShoppingItems() {
-  const pending = state.shoppingItems.filter((item) => item.status !== "bought");
-  const bought = state.shoppingItems.filter((item) => item.status === "bought");
-  return [...pending, ...bought];
+  return state.shoppingItems
+    .slice()
+    .sort((leftItem, rightItem) => {
+      const categoryOrderDiff = getCategorySortOrder(leftItem.categoryId) - getCategorySortOrder(rightItem.categoryId);
+      if (categoryOrderDiff !== 0) {
+        return categoryOrderDiff;
+      }
+
+      const leftStatusOrder = leftItem.status === "bought" ? 1 : 0;
+      const rightStatusOrder = rightItem.status === "bought" ? 1 : 0;
+      if (leftStatusOrder !== rightStatusOrder) {
+        return leftStatusOrder - rightStatusOrder;
+      }
+
+      return (leftItem.createdAt || 0) - (rightItem.createdAt || 0);
+    });
+}
+
+function getGroupedShoppingItems() {
+  const groups = new Map();
+
+  getSortedShoppingItems().forEach((item) => {
+    const category = getCategoryById(item.categoryId) || getOtherCategory();
+    const key = category?.id ?? 1;
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        category,
+        items: []
+      });
+    }
+
+    groups.get(key).items.push(item);
+  });
+
+  return getSortedCategories()
+    .map((category) => groups.get(category.id))
+    .filter(Boolean);
 }
 
 function renderShoppingList() {
@@ -733,8 +815,7 @@ function renderShoppingList() {
             </div>
 
             <select class="small-btn category-select" data-action="set-category" data-id="${item.id}">
-              ${state.categories
-                .sort((a, b) => a.order - b.order)
+              ${getSortedCategories()
                 .map(cat => `<option value="${cat.id}" ${cat.id === item.categoryId ? "selected" : ""}>${escapeHtml(cat.name)}</option>`)
                 .join("")}
             </select>
@@ -1683,11 +1764,18 @@ function onAddCategory() {
 
   elements.newCategoryName.value = "";
   elements.newCategoryColor.value = CATEGORY_COLOR_PALETTE[0];
+  categoryUiState.addPaletteOpen = false;
 
   renderNewCategoryPalette();
   renderCategoriesInUI();
   renderCategorySelect();
   setUsbStatus(t("categoryAdded", { name }));
+}
+
+function toggleNewCategoryPalette() {
+  categoryUiState.addPaletteOpen = !categoryUiState.addPaletteOpen;
+  renderNewCategoryPalette();
+  applyLanguage();
 }
 
 function deleteCategory(categoryId) {
@@ -1730,6 +1818,84 @@ function updateCategoryColor(categoryId, newColor) {
   setUsbStatus(t("categoryColorUpdated", { name: category.name }));
 }
 
+function startCategoryEdit(categoryId) {
+  const category = getCategoryById(categoryId);
+  if (!category) {
+    return;
+  }
+
+  categoryUiState.editingCategoryId = categoryId;
+  categoryUiState.editNameDraft = category.name;
+  categoryUiState.editColorDraft = category.color;
+  categoryUiState.editPaletteOpen = false;
+  renderCategoriesInUI();
+}
+
+function cancelCategoryEdit() {
+  categoryUiState.editingCategoryId = null;
+  categoryUiState.editNameDraft = "";
+  categoryUiState.editColorDraft = CATEGORY_COLOR_PALETTE[0];
+  categoryUiState.editPaletteOpen = false;
+  renderCategoriesInUI();
+}
+
+function saveCategoryEdit(categoryId) {
+  const category = getCategoryById(categoryId);
+  if (!category) {
+    return;
+  }
+
+  const nextName = categoryUiState.editNameDraft.trim();
+  if (!nextName) {
+    return;
+  }
+
+  category.name = nextName;
+  category.color = categoryUiState.editColorDraft || category.color;
+  persistState();
+  cancelCategoryEdit();
+  renderShoppingList();
+  renderCategorySelect();
+}
+
+function toggleEditCategoryPalette() {
+  categoryUiState.editPaletteOpen = !categoryUiState.editPaletteOpen;
+  renderCategoriesInUI();
+}
+
+function moveCategory(categoryId, direction) {
+  const sortedCategories = getSortedCategories();
+  const currentIndex = sortedCategories.findIndex((category) => category.id === categoryId);
+
+  if (currentIndex === -1) {
+    return;
+  }
+
+  const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+  if (targetIndex < 0 || targetIndex >= sortedCategories.length) {
+    return;
+  }
+
+  [sortedCategories[currentIndex], sortedCategories[targetIndex]] = [sortedCategories[targetIndex], sortedCategories[currentIndex]];
+
+  sortedCategories.forEach((category, index) => {
+    const stateCategory = getCategoryById(category.id);
+    if (stateCategory) {
+      stateCategory.order = index;
+    }
+  });
+
+  persistState();
+  renderShoppingList();
+  renderCategoriesInUI();
+  renderCategorySelect();
+
+  const movedCategory = getCategoryById(categoryId);
+  if (movedCategory) {
+    setUsbStatus(t(direction === "up" ? "categoryMovedUp" : "categoryMovedDown", { name: movedCategory.name }));
+  }
+}
+
 function renderCategoriesInUI() {
   if (!elements.categoriesList) return;
 
@@ -1738,31 +1904,63 @@ function renderCategoriesInUI() {
     return;
   }
 
-  elements.categoriesList.innerHTML = state.categories
-    .sort((a, b) => a.order - b.order)
-    .map(category => {
+  const sortedCategories = getSortedCategories();
+
+  elements.categoriesList.innerHTML = sortedCategories
+    .map((category, index) => {
       const isOther = category.id === 1;
+      const isFirst = index === 0;
+      const isLast = index === sortedCategories.length - 1;
+      const isEditing = categoryUiState.editingCategoryId === category.id;
       return `
         <div class="category-item" data-category-id="${category.id}">
-          <div class="category-info">
-            <div class="category-color-preview" style="background-color: ${escapeHtml(category.color)}"></div>
-            <span class="category-name">${escapeHtml(category.name)}</span>
-          </div>
-          <div class="category-controls">
-            <div class="color-palette category-palette ${isOther ? "is-disabled" : ""}" data-category-id="${category.id}">
-              ${buildColorPalette(category.color, "category", category.id, isOther)}
-            </div>
-            <button class="small-btn danger category-delete-btn" data-category-id="${category.id}" ${isOther ? "disabled" : ""}>${escapeHtml(t("deleteCategory"))}</button>
-          </div>
+          ${isEditing ? buildCategoryEditCard(category, isFirst, isLast, isOther) : buildCategoryDisplayCard(category, isFirst, isLast, isOther)}
         </div>
       `;
     })
     .join("");
 
+  elements.categoriesList.querySelectorAll(".category-edit-name-input").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      categoryUiState.editNameDraft = event.currentTarget.value;
+    });
+  });
+
+  elements.categoriesList.querySelectorAll(".category-edit-btn").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      startCategoryEdit(parseInt(event.currentTarget.dataset.categoryId));
+    });
+  });
+
+  elements.categoriesList.querySelectorAll(".category-edit-save-btn").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      saveCategoryEdit(parseInt(event.currentTarget.dataset.categoryId));
+    });
+  });
+
+  elements.categoriesList.querySelectorAll(".category-edit-cancel-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      cancelCategoryEdit();
+    });
+  });
+
+  elements.categoriesList.querySelectorAll(".category-edit-palette-toggle").forEach((button) => {
+    button.addEventListener("click", () => {
+      toggleEditCategoryPalette();
+    });
+  });
+
   elements.categoriesList.querySelectorAll(".category-palette-swatch").forEach(button => {
     button.addEventListener("click", (event) => {
-      const categoryId = parseInt(event.currentTarget.dataset.categoryId);
       const color = event.currentTarget.dataset.color;
+      const categoryId = parseInt(event.currentTarget.dataset.categoryId);
+
+      if (categoryUiState.editingCategoryId === categoryId) {
+        categoryUiState.editColorDraft = color;
+        renderCategoriesInUI();
+        return;
+      }
+
       updateCategoryColor(categoryId, color);
     });
   });
@@ -1770,6 +1968,14 @@ function renderCategoriesInUI() {
   elements.categoriesList.querySelectorAll(".category-delete-btn").forEach(btn => {
     btn.addEventListener("click", (e) => {
       deleteCategory(parseInt(e.target.dataset.categoryId));
+    });
+  });
+
+  elements.categoriesList.querySelectorAll(".category-move-btn").forEach(btn => {
+    btn.addEventListener("click", (event) => {
+      const categoryId = parseInt(event.currentTarget.dataset.categoryId);
+      const direction = event.currentTarget.dataset.action === "move-up" ? "up" : "down";
+      moveCategory(categoryId, direction);
     });
   });
 }
@@ -1780,6 +1986,10 @@ function renderNewCategoryPalette() {
   }
 
   const selectedColor = elements.newCategoryColor.value || CATEGORY_COLOR_PALETTE[0];
+  elements.newCategoryPalette.classList.toggle("hidden", !categoryUiState.addPaletteOpen);
+  elements.newCategoryColorPreview.style.backgroundColor = selectedColor;
+  elements.newCategoryColorToggle.setAttribute("aria-label", categoryUiState.addPaletteOpen ? t("hideColorPalette") : t("showColorPalette"));
+  elements.newCategoryColorToggle.title = categoryUiState.addPaletteOpen ? t("hideColorPalette") : t("showColorPalette");
   elements.newCategoryPalette.innerHTML = buildColorPalette(selectedColor, "new");
 
   elements.newCategoryPalette.querySelectorAll(".new-category-palette-swatch").forEach(button => {
@@ -1810,14 +2020,60 @@ function buildColorPalette(selectedColor, paletteType, categoryId = null, disabl
   }).join("");
 }
 
+function buildCategoryDisplayCard(category, isFirst, isLast, isOther) {
+  return `
+    <div class="category-card-main">
+      <div class="category-info">
+        <div class="category-color-preview" style="background-color: ${escapeHtml(category.color)}"></div>
+        <span class="category-name">${escapeHtml(category.name)}</span>
+      </div>
+      <div class="category-controls">
+        <div class="category-order-controls">
+          <button class="small-btn category-move-btn" data-action="move-up" data-category-id="${category.id}" ${isFirst ? "disabled" : ""} title="${escapeHtml(t("moveCategoryUp"))}">↑</button>
+          <button class="small-btn category-move-btn" data-action="move-down" data-category-id="${category.id}" ${isLast ? "disabled" : ""} title="${escapeHtml(t("moveCategoryDown"))}">↓</button>
+        </div>
+        <div class="category-action-row">
+          <button class="small-btn category-edit-btn" data-category-id="${category.id}">${escapeHtml(t("editCategory"))}</button>
+          <button class="small-btn danger category-delete-btn" data-category-id="${category.id}" ${isOther ? "disabled" : ""}>${escapeHtml(t("deleteCategory"))}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function buildCategoryEditCard(category, isFirst, isLast, isOther) {
+  return `
+    <div class="category-card-main editing">
+      <div class="category-edit-header">
+        <div class="category-order-controls">
+          <button class="small-btn category-move-btn" data-action="move-up" data-category-id="${category.id}" ${isFirst ? "disabled" : ""} title="${escapeHtml(t("moveCategoryUp"))}">↑</button>
+          <button class="small-btn category-move-btn" data-action="move-down" data-category-id="${category.id}" ${isLast ? "disabled" : ""} title="${escapeHtml(t("moveCategoryDown"))}">↓</button>
+        </div>
+        <button class="small-btn danger category-delete-btn" data-category-id="${category.id}" ${isOther ? "disabled" : ""}>${escapeHtml(t("deleteCategory"))}</button>
+      </div>
+      <div class="category-edit-row">
+        <span class="category-color-preview" style="background-color: ${escapeHtml(categoryUiState.editColorDraft)}"></span>
+        <input class="confirm-input category-edit-name-input" type="text" value="${escapeHtml(categoryUiState.editNameDraft)}" />
+        <button class="ghost-btn palette-toggle-btn category-edit-palette-toggle" type="button" title="${escapeHtml(categoryUiState.editPaletteOpen ? t("hideColorPalette") : t("showColorPalette"))}">🌈</button>
+      </div>
+      <div class="color-palette category-palette ${categoryUiState.editPaletteOpen ? "" : "hidden"}" data-category-id="${category.id}">
+        ${buildColorPalette(categoryUiState.editColorDraft, "category", category.id, false)}
+      </div>
+      <div class="category-action-row">
+        <button class="small-btn category-edit-cancel-btn" type="button">${escapeHtml(t("cancelEdit"))}</button>
+        <button class="primary-btn category-edit-save-btn" type="button" data-category-id="${category.id}">${escapeHtml(t("saveCategory"))}</button>
+      </div>
+    </div>
+  `;
+}
+
 function renderCategorySelect() {
   if (!elements.confirmScanCategory) return;
 
   const otherCategory = getOtherCategory();
   const selectedId = elements.confirmScanCategory.value ? parseInt(elements.confirmScanCategory.value) : otherCategory?.id;
 
-  elements.confirmScanCategory.innerHTML = state.categories
-    .sort((a, b) => a.order - b.order)
+  elements.confirmScanCategory.innerHTML = getSortedCategories()
     .map(category => {
       const isSelected = category.id === selectedId;
       return `<option value="${category.id}" ${isSelected ? "selected" : ""}>${escapeHtml(category.name)}</option>`;

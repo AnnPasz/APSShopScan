@@ -120,7 +120,11 @@
         <div class="add-category-form">
           <input id="new-category-name" class="confirm-input" type="text" placeholder="Nazwa kategorii" />
           <input id="new-category-color" type="hidden" value="#b9ff35" />
-          <div id="new-category-palette" class="color-palette add-category-palette" aria-label="Paleta kolorów kategorii"></div>
+          <div class="add-category-color-row">
+            <button id="new-category-color-toggle" class="ghost-btn palette-toggle-btn" type="button" aria-label="Pokaż paletę kolorów" title="Pokaż paletę kolorów">🌈</button>
+            <span id="new-category-color-preview" class="category-color-preview add-category-color-preview"></span>
+          </div>
+          <div id="new-category-palette" class="color-palette add-category-palette hidden" aria-label="Paleta kolorów kategorii"></div>
           <button id="add-category-btn" class="primary-btn" type="button">Dodaj kategorię</button>
         </div>
       </div>
