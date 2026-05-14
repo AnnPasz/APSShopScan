@@ -173,6 +173,16 @@ body {
   flex: 0 0 auto;
 }
 
+#api-settings-btn {
+  margin-left: auto;
+}
+
+@media (max-width: 480px) {
+  #api-settings-btn {
+    margin-left: auto;
+  }
+}
+
 .square-icon-btn {
   width: 2.35rem;
   min-width: 2.35rem;

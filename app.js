@@ -311,8 +311,7 @@ function init() {
 function bindEvents() {
   elements.exportNoteBtn.addEventListener("click", exportShoppingListToNotes);
   elements.clearListBtn.addEventListener("click", clearShoppingList);
-  elements.categoriesBtn.addEventListener("click", openCategoriesModal);
-  elements.apiSettingsBtn.addEventListener("click", openApiSettingsModal);
+  bindTopActionButtons();
   elements.navShopping.addEventListener("click", () => showView("shopping"));
   elements.navManual.addEventListener("click", () => showView("manual"));
   elements.languageToggle.addEventListener("click", toggleLanguage);
@@ -331,6 +330,23 @@ function bindEvents() {
   elements.usbScanInput.addEventListener("keydown", onUsbInputKeyDown);
   elements.usbScanInput.addEventListener("input", onUsbInputChange);
   elements.addCategoryBtn.addEventListener("click", onAddCategory);
+}
+
+function bindTopActionButtons() {
+  elements.categoriesBtn.addEventListener("click", openCategoriesModal);
+  elements.apiSettingsBtn.addEventListener("click", openApiSettingsModal);
+
+  elements.categoriesBtn.addEventListener("touchend", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openCategoriesModal();
+  }, { passive: false });
+
+  elements.apiSettingsBtn.addEventListener("touchend", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openApiSettingsModal();
+  }, { passive: false });
 }
 
 function loadState() {
