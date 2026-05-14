@@ -2366,6 +2366,12 @@ function moveCategory(categoryId, direction) {
   const movedCategory = getCategoryById(categoryId);
   if (movedCategory) {
     setUsbStatus(t(direction === "up" ? "categoryMovedUp" : "categoryMovedDown", { name: movedCategory.name }));
+    
+    // Scroll the moved category into view
+    const categoryElement = elements.categoriesList?.querySelector(`[data-category-id="${categoryId}"]`);
+    if (categoryElement) {
+      categoryElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
   }
 }
 
