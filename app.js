@@ -26,6 +26,7 @@ const TRANSLATIONS = {
     usbProcessing: "Przetwarzam zeskanowany kod...",
     exportNoteButton: "Eksportuj do notatki",
     clearListButton: "Wyczyść",
+    categoriesButton: "Kategorie",
     clearListConfirm: "Usunąć wszystkie pozycje z listy zakupów?",
     exportEmptyList: "Lista zakupów jest pusta.",
     exportNoteTitle: "Lista zakupów",
@@ -97,6 +98,8 @@ const TRANSLATIONS = {
     apiSettingsStatusMissing: "Brak tokenu. Używane są tylko darmowe źródła.",
     apiTokenSaved: "Token API zapisany.",
     apiTokenCleared: "Token API usunięty.",
+    categoriesModalTitle: "Zarządzaj kategoriami",
+    categoriesModalClose: "Zamknij",
     confirmCategoryLabel: "Kategoria",
     categoriesSectionTitle: "Kategorie",
     addCategoryPlaceholder: "Nazwa kategorii",
@@ -125,6 +128,7 @@ const TRANSLATIONS = {
     usbProcessing: "Processing scanned code...",
     exportNoteButton: "Export to Notes",
     clearListButton: "Clear",
+    categoriesButton: "Categories",
     clearListConfirm: "Remove all items from the shopping list?",
     exportEmptyList: "The shopping list is empty.",
     exportNoteTitle: "Shopping List",
@@ -196,6 +200,8 @@ const TRANSLATIONS = {
     apiSettingsStatusMissing: "No token set. Only free sources are used.",
     apiTokenSaved: "API token saved.",
     apiTokenCleared: "API token cleared.",
+    categoriesModalTitle: "Manage categories",
+    categoriesModalClose: "Close",
     confirmCategoryLabel: "Category",
     categoriesSectionTitle: "Categories",
     addCategoryPlaceholder: "Category name",
@@ -237,6 +243,7 @@ const elements = {
   languageToggle: document.getElementById("language-toggle"),
   exportNoteBtn: document.getElementById("export-note-btn"),
   clearListBtn: document.getElementById("clear-list-btn"),
+  categoriesBtn: document.getElementById("categories-btn"),
   apiSettingsBtn: document.getElementById("api-settings-btn"),
   navShopping: document.getElementById("nav-shopping"),
   navManual: document.getElementById("nav-manual"),
@@ -278,6 +285,9 @@ const elements = {
   apiTokenInput: document.getElementById("api-token-input"),
   apiTokenSave: document.getElementById("api-token-save"),
   apiTokenClear: document.getElementById("api-token-clear"),
+  categoriesModal: document.getElementById("categories-modal"),
+  categoriesModalTitle: document.getElementById("categories-modal-title"),
+  categoriesModalClose: document.getElementById("categories-modal-close"),
   confirmCategoryLabel: document.getElementById("confirm-category-label"),
   confirmScanCategory: document.getElementById("confirm-scan-category"),
   categoriesSectionTitle: document.getElementById("categories-section-title"),
@@ -301,6 +311,7 @@ function init() {
 function bindEvents() {
   elements.exportNoteBtn.addEventListener("click", exportShoppingListToNotes);
   elements.clearListBtn.addEventListener("click", clearShoppingList);
+  elements.categoriesBtn.addEventListener("click", openCategoriesModal);
   elements.apiSettingsBtn.addEventListener("click", openApiSettingsModal);
   elements.navShopping.addEventListener("click", () => showView("shopping"));
   elements.navManual.addEventListener("click", () => showView("manual"));
@@ -315,6 +326,7 @@ function bindEvents() {
   elements.apiSettingsCloseTop.addEventListener("click", closeApiSettingsModal);
   elements.apiTokenSave.addEventListener("click", saveApiToken);
   elements.apiTokenClear.addEventListener("click", clearApiToken);
+  elements.categoriesModalClose.addEventListener("click", closeCategoriesModal);
   elements.usbFocusBtn.addEventListener("click", focusUsbInput);
   elements.usbScanInput.addEventListener("keydown", onUsbInputKeyDown);
   elements.usbScanInput.addEventListener("input", onUsbInputChange);
@@ -412,6 +424,8 @@ function applyLanguage() {
   elements.exportNoteBtn.title = t("exportNoteButton");
   elements.clearListBtn.setAttribute("aria-label", t("clearListButton"));
   elements.clearListBtn.title = t("clearListButton");
+  elements.categoriesBtn.setAttribute("aria-label", t("categoriesButton"));
+  elements.categoriesBtn.title = t("categoriesButton");
   elements.apiSettingsBtn.setAttribute("aria-label", t("apiSettingsButton"));
   elements.apiSettingsBtn.title = t("apiSettingsButton");
   elements.navShopping.textContent = t("navShopping");
@@ -442,6 +456,8 @@ function applyLanguage() {
   elements.apiTokenInput.placeholder = t("apiTokenPlaceholder");
   elements.apiTokenSave.textContent = t("apiTokenSave");
   elements.apiTokenClear.textContent = t("apiTokenClear");
+  elements.categoriesModalTitle.textContent = t("categoriesModalTitle");
+  elements.categoriesModalClose.textContent = t("categoriesModalClose");
   elements.confirmCategoryLabel.textContent = t("confirmCategoryLabel");
   elements.categoriesSectionTitle.textContent = t("categoriesSectionTitle");
   elements.newCategoryName.placeholder = t("addCategoryPlaceholder");
@@ -902,7 +918,6 @@ function updateApiSettingsStatus() {
 function openApiSettingsModal() {
   elements.apiTokenInput.value = state.eanSearchApiToken || "";
   updateApiSettingsStatus();
-  renderCategoriesInUI();
   openDialog(elements.apiSettingsModal);
   elements.apiTokenInput.focus();
   elements.apiTokenInput.select();
@@ -910,6 +925,16 @@ function openApiSettingsModal() {
 
 function closeApiSettingsModal() {
   closeDialog(elements.apiSettingsModal);
+}
+
+function openCategoriesModal() {
+  renderCategoriesInUI();
+  openDialog(elements.categoriesModal);
+  elements.newCategoryName.focus();
+}
+
+function closeCategoriesModal() {
+  closeDialog(elements.categoriesModal);
 }
 
 function saveApiToken() {

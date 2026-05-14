@@ -24,6 +24,7 @@
         <div class="list-actions" aria-label="Akcje listy zakupów">
           <button id="export-note-btn" class="ghost-btn square-icon-btn" type="button" aria-label="Eksportuj do notatki" title="Eksportuj do notatki">⤴️</button>
           <button id="clear-list-btn" class="ghost-btn square-icon-btn danger-btn" type="button" aria-label="Wyczyść" title="Wyczyść">🗑️</button>
+          <button id="categories-btn" class="ghost-btn square-icon-btn" type="button" aria-label="Zarządzaj kategoriami" title="Zarządzaj kategoriami">🍎</button>
           <button id="api-settings-btn" class="ghost-btn square-icon-btn" type="button" aria-label="Ustawienia API" title="Ustawienia API">⚙️</button>
         </div>
 
@@ -98,9 +99,15 @@
           <button id="api-token-clear" class="ghost-btn danger-btn" type="button">Wyczyść token</button>
           <button id="api-token-save" class="primary-btn" type="button">Zapisz token</button>
         </div>
+      </div>
+    </dialog>
 
-        <hr class="settings-divider" />
-
+    <dialog id="categories-modal" class="scanner-modal confirm-modal">
+      <div class="scanner-header">
+        <h3 id="categories-modal-title">Zarządzaj kategoriami</h3>
+        <button id="categories-modal-close" class="ghost-btn">Zamknij</button>
+      </div>
+      <div class="api-settings-grid">
         <h4 id="categories-section-title" class="settings-section-title">Kategorie</h4>
         <div class="categories-list" id="categories-list"></div>
         
