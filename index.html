@@ -76,6 +76,8 @@
         <p id="confirm-scan-code" class="helper-text"></p>
         <label id="confirm-name-label" class="confirm-label" for="confirm-scan-name">Nazwa produktu</label>
         <input id="confirm-scan-name" class="confirm-input" type="text" placeholder="W razie potrzeby popraw nazwę produktu" />
+        <label id="confirm-category-label" class="confirm-label" for="confirm-scan-category">Kategoria</label>
+        <select id="confirm-scan-category" class="confirm-input confirm-select"></select>
         <div class="item-controls">
           <button id="confirm-scan-cancel" class="ghost-btn">Anuluj</button>
           <button id="confirm-scan-add" class="primary-btn">Dodaj do listy</button>
@@ -95,6 +97,17 @@
         <div class="item-controls">
           <button id="api-token-clear" class="ghost-btn danger-btn" type="button">Wyczyść token</button>
           <button id="api-token-save" class="primary-btn" type="button">Zapisz token</button>
+        </div>
+
+        <hr class="settings-divider" />
+
+        <h4 id="categories-section-title" class="settings-section-title">Kategorie</h4>
+        <div class="categories-list" id="categories-list"></div>
+        
+        <div class="add-category-form">
+          <input id="new-category-name" class="confirm-input" type="text" placeholder="Nazwa kategorii" />
+          <input id="new-category-color" class="color-input" type="color" value="#b9ff35" title="Kolor kategorii" />
+          <button id="add-category-btn" class="primary-btn" type="button">Dodaj kategorię</button>
         </div>
       </div>
     </dialog>

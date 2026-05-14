@@ -6,6 +6,7 @@ const STORAGE_KEYS = {
   language: "aps-language",
   eanSearchApiToken: "aps-ean-search-api-token",
   eanSearchQueriesUsed: "aps-ean-search-queries-used",
+  categories: "aps-categories"
 };
 
 const TRANSLATIONS = {
@@ -95,7 +96,18 @@ const TRANSLATIONS = {
     apiSettingsStatusConnected: "EAN Search aktywny. Użyte zapytania: {used}.",
     apiSettingsStatusMissing: "Brak tokenu. Używane są tylko darmowe źródła.",
     apiTokenSaved: "Token API zapisany.",
-    apiTokenCleared: "Token API usunięty."
+    apiTokenCleared: "Token API usunięty.",
+    confirmCategoryLabel: "Kategoria",
+    categoriesSectionTitle: "Kategorie",
+    addCategoryPlaceholder: "Nazwa kategorii",
+    addCategoryBtn: "Dodaj kategorię",
+    categoryAdded: "Kategoria '{name}' została dodana.",
+    categoryDeleted: "Kategoria '{name}' została usunięta.",
+    categoryColorUpdated: "Kolor kategorii '{name}' został zaktualizowany.",
+    editCategory: "Edytuj",
+    deleteCategory: "Usuń",
+    confirmDeleteCategory: "Usunąć kategorię '{name}'? Produkty będą miały kategorię 'Inne'.",
+    categoryOther: "Inne"
   },
   en: {
     pageTitle: "APS Shopping List",
@@ -183,7 +195,18 @@ const TRANSLATIONS = {
     apiSettingsStatusConnected: "EAN Search enabled. Paid queries used: {used}.",
     apiSettingsStatusMissing: "No token set. Only free sources are used.",
     apiTokenSaved: "API token saved.",
-    apiTokenCleared: "API token cleared."
+    apiTokenCleared: "API token cleared.",
+    confirmCategoryLabel: "Category",
+    categoriesSectionTitle: "Categories",
+    addCategoryPlaceholder: "Category name",
+    addCategoryBtn: "Add category",
+    categoryAdded: "Category '{name}' added.",
+    categoryDeleted: "Category '{name}' deleted.",
+    categoryColorUpdated: "Category '{name}' color updated.",
+    editCategory: "Edit",
+    deleteCategory: "Delete",
+    confirmDeleteCategory: "Delete category '{name}'? Products will be set to 'Other'.",
+    categoryOther: "Other"
   }
 };
 
@@ -197,7 +220,9 @@ const state = {
   pendingScannedItem: null,
   language: "pl",
   eanSearchApiToken: null,
-  eanSearchQueriesUsed: 0
+  eanSearchQueriesUsed: 0,
+  categories: [],
+  nextCategoryId: 1
 };
 
 const scannerAutoTrigger = {
@@ -252,7 +277,14 @@ const elements = {
   apiTokenLabel: document.getElementById("api-token-label"),
   apiTokenInput: document.getElementById("api-token-input"),
   apiTokenSave: document.getElementById("api-token-save"),
-  apiTokenClear: document.getElementById("api-token-clear")
+  apiTokenClear: document.getElementById("api-token-clear"),
+  confirmCategoryLabel: document.getElementById("confirm-category-label"),
+  confirmScanCategory: document.getElementById("confirm-scan-category"),
+  categoriesSectionTitle: document.getElementById("categories-section-title"),
+  categoriesList: document.getElementById("categories-list"),
+  newCategoryName: document.getElementById("new-category-name"),
+  newCategoryColor: document.getElementById("new-category-color"),
+  addCategoryBtn: document.getElementById("add-category-btn")
 };
 
 init();
@@ -286,6 +318,7 @@ function bindEvents() {
   elements.usbFocusBtn.addEventListener("click", focusUsbInput);
   elements.usbScanInput.addEventListener("keydown", onUsbInputKeyDown);
   elements.usbScanInput.addEventListener("input", onUsbInputChange);
+  elements.addCategoryBtn.addEventListener("click", onAddCategory);
 }
 
 function loadState() {
@@ -315,6 +348,14 @@ function loadState() {
     state.eanSearchQueriesUsed = paidQueriesUsed;
   }
 
+  state.categories = readJson(STORAGE_KEYS.categories, []);
+  if (!state.categories.length) {
+    initializeDefaultCategories();
+  }
+
+  // Calculate nextCategoryId
+  state.nextCategoryId = state.categories.length ? Math.max(...state.categories.map(c => c.id)) + 1 : 1;
+
   hydrateEanSearchTokenFromUrl();
 }
 
@@ -325,6 +366,7 @@ function persistState() {
   localStorage.setItem(STORAGE_KEYS.eanLookupCache, JSON.stringify(state.eanLookupCache));
   localStorage.setItem(STORAGE_KEYS.language, state.language);
   localStorage.setItem(STORAGE_KEYS.eanSearchQueriesUsed, String(state.eanSearchQueriesUsed));
+  localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(state.categories));
 
   if (state.eanSearchApiToken) {
     localStorage.setItem(STORAGE_KEYS.eanSearchApiToken, state.eanSearchApiToken);
@@ -400,6 +442,10 @@ function applyLanguage() {
   elements.apiTokenInput.placeholder = t("apiTokenPlaceholder");
   elements.apiTokenSave.textContent = t("apiTokenSave");
   elements.apiTokenClear.textContent = t("apiTokenClear");
+  elements.confirmCategoryLabel.textContent = t("confirmCategoryLabel");
+  elements.categoriesSectionTitle.textContent = t("categoriesSectionTitle");
+  elements.newCategoryName.placeholder = t("addCategoryPlaceholder");
+  elements.addCategoryBtn.textContent = t("addCategoryBtn");
   updateApiSettingsStatus();
   elements.languageToggle.textContent = state.language === "pl" ? "🇬🇧" : "🇵🇱";
   elements.languageToggle.setAttribute("aria-label", t("languageSwitchLabel"));
@@ -407,6 +453,8 @@ function applyLanguage() {
   if (state.pendingScannedItem && elements.confirmScanModal.open) {
     fillConfirmScanModal();
   }
+  renderCategoriesInUI();
+  renderCategorySelect();
 }
 
 function toggleLanguage() {
@@ -481,7 +529,11 @@ function clearShoppingList() {
 }
 
 function buildShoppingNoteText() {
-  const items = getSortedShoppingItems().map((item) => `- ${item.name} x${item.qty}`);
+  const items = getSortedShoppingItems().map((item) => {
+    const category = getCategoryById(item.categoryId);
+    const categoryLabel = category ? ` [${category.name}]` : "";
+    return `- ${item.name} x${item.qty}${categoryLabel}`;
+  });
   return [t("exportNoteTitle"), "", ...items].join("\n");
 }
 
@@ -613,12 +665,20 @@ function renderShoppingList() {
   elements.shoppingList.innerHTML = sorted
     .map((item) => {
       const isBought = item.status === "bought";
+      const category = getCategoryById(item.categoryId) || getOtherCategory();
+      const categoryColor = category ? category.color : "#9aa3c6";
+      const categoryName = category ? category.name : t("categoryOther");
+      
       return `
         <li class="item-card">
           <div class="item-top">
             <div>
               <div class="item-name">${escapeHtml(item.name)}</div>
               <div class="item-meta">${escapeHtml(item.meta || "")}</div>
+              <div class="item-category-badge" style="background-color: ${escapeHtml(categoryColor)}20; border: 1px solid ${escapeHtml(categoryColor)}; color: ${escapeHtml(categoryColor)};">
+                <span class="category-dot" style="background-color: ${escapeHtml(categoryColor)}"></span>
+                ${escapeHtml(categoryName)}
+              </div>
             </div>
             <span class="status-pill ${isBought ? "bought" : "pending"}">${isBought ? escapeHtml(t("statusBought")) : escapeHtml(t("statusPending"))}</span>
           </div>
@@ -630,6 +690,13 @@ function renderShoppingList() {
               <button class="small-btn" data-action="inc-qty" data-id="${item.id}">+</button>
             </div>
 
+            <select class="small-btn category-select" data-action="set-category" data-id="${item.id}">
+              ${state.categories
+                .sort((a, b) => a.order - b.order)
+                .map(cat => `<option value="${cat.id}" ${cat.id === item.categoryId ? "selected" : ""}>${escapeHtml(cat.name)}</option>`)
+                .join("")}
+            </select>
+
             <button class="small-btn danger" data-action="cancel" data-id="${item.id}">${escapeHtml(t("cancelButton"))}</button>
             <button class="small-btn ok" data-action="bought" data-id="${item.id}" ${isBought ? "disabled" : ""}>${escapeHtml(t("boughtButton"))}</button>
           </div>
@@ -640,6 +707,10 @@ function renderShoppingList() {
 
   elements.shoppingList.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", onShoppingAction);
+  });
+
+  elements.shoppingList.querySelectorAll(".category-select").forEach((select) => {
+    select.addEventListener("change", onShoppingAction);
   });
 }
 
@@ -667,6 +738,11 @@ function onShoppingAction(event) {
   if (action === "bought") {
     state.shoppingItems[index].status = "bought";
     state.shoppingItems[index].boughtAt = Date.now();
+  }
+
+  if (action === "set-category") {
+    const newCategoryId = parseInt(event.currentTarget.value);
+    state.shoppingItems[index].categoryId = newCategoryId;
   }
 
   persistState();
@@ -826,6 +902,7 @@ function updateApiSettingsStatus() {
 function openApiSettingsModal() {
   elements.apiTokenInput.value = state.eanSearchApiToken || "";
   updateApiSettingsStatus();
+  renderCategoriesInUI();
   openDialog(elements.apiSettingsModal);
   elements.apiTokenInput.focus();
   elements.apiTokenInput.select();
@@ -1177,6 +1254,7 @@ function fillConfirmScanModal() {
 
   elements.confirmScanCode.textContent = t("confirmCode", { code: state.pendingScannedItem.sourceCode });
   elements.confirmScanName.value = state.pendingScannedItem.name;
+  renderCategorySelect();
 }
 
 function clearPendingScannedItem() {
@@ -1190,6 +1268,8 @@ function confirmPendingScannedItem() {
   }
 
   const confirmedName = elements.confirmScanName.value.trim() || `EAN ${state.pendingScannedItem.sourceCode}`;
+  const categoryId = parseInt(elements.confirmScanCategory.value) || getOtherCategory()?.id;
+  
   if (state.pendingScannedItem.source === "ean") {
     state.eanLookupCache[state.pendingScannedItem.sourceCode] = {
       name: confirmedName,
@@ -1200,7 +1280,8 @@ function confirmPendingScannedItem() {
   addShoppingItem({
     ...state.pendingScannedItem,
     name: confirmedName,
-    meta: `${state.pendingScannedItem.meta} • ${state.pendingScannedItem.lookupMeta}`
+    meta: `${state.pendingScannedItem.meta} • ${state.pendingScannedItem.lookupMeta}`,
+    categoryId
   });
 
   persistState();
@@ -1250,12 +1331,15 @@ function mapQrToManualItem(payload) {
 }
 
 function addShoppingItem(data) {
+  const categoryId = data.categoryId || getOtherCategory()?.id || 1;
+  
   state.shoppingItems.push({
     id: crypto.randomUUID(),
     name: data.name,
     meta: data.meta,
     source: data.source,
     sourceCode: data.sourceCode,
+    categoryId,
     qty: 1,
     status: "pending",
     createdAt: Date.now()
@@ -1504,4 +1588,146 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+// ============= CATEGORIES MANAGEMENT =============
+
+function initializeDefaultCategories() {
+  const otherCategoryName = TRANSLATIONS[state.language]?.categoryOther || TRANSLATIONS.pl.categoryOther || "Inne";
+  const defaultCategories = [
+    { id: 1, name: otherCategoryName, color: "#9aa3c6", order: 0 }
+  ];
+  state.categories = defaultCategories;
+  persistState();
+}
+
+function getCategoryById(categoryId) {
+  return state.categories.find(c => c.id === categoryId) || null;
+}
+
+function getOtherCategory() {
+  return state.categories.find(c => c.id === 1) || state.categories[0];
+}
+
+function onAddCategory() {
+  const name = elements.newCategoryName.value.trim();
+  const color = elements.newCategoryColor.value || "#b9ff35";
+
+  if (!name) {
+    return;
+  }
+
+  const newCategory = {
+    id: state.nextCategoryId,
+    name,
+    color,
+    order: state.categories.length
+  };
+
+  state.categories.push(newCategory);
+  state.nextCategoryId += 1;
+  persistState();
+
+  elements.newCategoryName.value = "";
+  elements.newCategoryColor.value = "#b9ff35";
+
+  renderCategoriesInUI();
+  renderCategorySelect();
+  setUsbStatus(t("categoryAdded", { name }));
+}
+
+function deleteCategory(categoryId) {
+  const category = getCategoryById(categoryId);
+  if (!category) return;
+
+  const confirmMsg = t("confirmDeleteCategory", { name: category.name });
+  if (!confirm(confirmMsg)) {
+    return;
+  }
+
+  // Move products with this category to "Other"
+  const otherCategory = getOtherCategory();
+  if (otherCategory && otherCategory.id !== categoryId) {
+    state.shoppingItems.forEach(item => {
+      if (item.categoryId === categoryId) {
+        item.categoryId = otherCategory.id;
+      }
+    });
+  }
+
+  state.categories = state.categories.filter(c => c.id !== categoryId);
+  persistState();
+
+  renderShoppingList();
+  renderCategoriesInUI();
+  renderCategorySelect();
+  setUsbStatus(t("categoryDeleted", { name: category.name }));
+}
+
+function updateCategoryColor(categoryId, newColor) {
+  const category = getCategoryById(categoryId);
+  if (!category) return;
+
+  category.color = newColor;
+  persistState();
+
+  renderShoppingList();
+  renderCategoriesInUI();
+  setUsbStatus(t("categoryColorUpdated", { name: category.name }));
+}
+
+function renderCategoriesInUI() {
+  if (!elements.categoriesList) return;
+
+  if (!state.categories.length) {
+    elements.categoriesList.innerHTML = "";
+    return;
+  }
+
+  elements.categoriesList.innerHTML = state.categories
+    .sort((a, b) => a.order - b.order)
+    .map(category => {
+      const isOther = category.id === 1;
+      return `
+        <div class="category-item" data-category-id="${category.id}">
+          <div class="category-info">
+            <div class="category-color-preview" style="background-color: ${escapeHtml(category.color)}"></div>
+            <span class="category-name">${escapeHtml(category.name)}</span>
+          </div>
+          <div class="category-controls">
+            <input type="color" class="color-input category-color-input" value="${escapeHtml(category.color)}" data-category-id="${category.id}" ${isOther ? "disabled" : ""} />
+            <button class="small-btn danger category-delete-btn" data-category-id="${category.id}" ${isOther ? "disabled" : ""}>${escapeHtml(t("deleteCategory"))}</button>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  // Attach event listeners
+  elements.categoriesList.querySelectorAll(".category-color-input").forEach(input => {
+    input.addEventListener("change", (e) => {
+      updateCategoryColor(parseInt(e.target.dataset.categoryId), e.target.value);
+    });
+  });
+
+  elements.categoriesList.querySelectorAll(".category-delete-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      deleteCategory(parseInt(e.target.dataset.categoryId));
+    });
+  });
+}
+
+function renderCategorySelect() {
+  if (!elements.confirmScanCategory) return;
+
+  const otherCategory = getOtherCategory();
+  const selectedId = elements.confirmScanCategory.value ? parseInt(elements.confirmScanCategory.value) : otherCategory?.id;
+
+  elements.confirmScanCategory.innerHTML = state.categories
+    .sort((a, b) => a.order - b.order)
+    .map(category => {
+      const isSelected = category.id === selectedId;
+      return `<option value="${category.id}" ${isSelected ? "selected" : ""}>${escapeHtml(category.name)}</option>`;
+    })
+    .join("");
 }
