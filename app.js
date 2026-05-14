@@ -63,6 +63,8 @@ const TRANSLATIONS = {
     noHistoryItems: "Brak zapisanych kodów EAN.",
     historyMeta: "EAN: {code} • Użyć: {count}",
     historyShoppingMeta: "Z historii EAN {code}",
+    historyDeleteConfirm: "Usunąć wpis historii EAN dla '{name}'?",
+    historyDeletedToast: "Usunięto wpis z historii EAN",
     addedToShoppingToast: "Dodano do listy zakupów",
     printAllQr: "Drukuj wszystkie kody QR",
     printAllQrEmpty: "Brak produktów bez EAN do wydruku.",
@@ -184,6 +186,8 @@ const TRANSLATIONS = {
     noHistoryItems: "No saved EAN codes yet.",
     historyMeta: "EAN: {code} • Uses: {count}",
     historyShoppingMeta: "From EAN history {code}",
+    historyDeleteConfirm: "Delete EAN history entry for '{name}'?",
+    historyDeletedToast: "EAN history entry removed",
     addedToShoppingToast: "Added to shopping list",
     printAllQr: "Print all QR codes",
     printAllQrEmpty: "No no-EAN products to print.",
@@ -930,7 +934,13 @@ function renderEanHistoryItems() {
             </div>
           </div>
           <div class="item-controls">
+            <select class="small-btn category-select" data-history-category="${escapeHtml(entry.code)}">
+              ${getSortedCategories()
+                .map((historyCategory) => `<option value="${historyCategory.id}" ${historyCategory.id === entry.categoryId ? "selected" : ""}>${escapeHtml(historyCategory.name)}</option>`)
+                .join("")}
+            </select>
             <button class="small-btn" data-history-add="${escapeHtml(entry.code)}">${escapeHtml(t("addToList"))}</button>
+            <button class="small-btn danger" data-history-delete="${escapeHtml(entry.code)}">${escapeHtml(t("manualDelete"))}</button>
           </div>
         </li>
       `;
@@ -963,6 +973,53 @@ function renderEanHistoryItems() {
       renderEanHistoryItems();
     });
   });
+
+  elements.historyItems.querySelectorAll("[data-history-category]").forEach((select) => {
+    select.addEventListener("change", () => {
+      const code = String(select.dataset.historyCategory || "");
+      const categoryId = Number(select.value);
+      updateEanHistoryItemCategory(code, categoryId);
+    });
+  });
+
+  elements.historyItems.querySelectorAll("[data-history-delete]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const code = String(button.dataset.historyDelete || "");
+      deleteEanHistoryItem(code);
+    });
+  });
+}
+
+function updateEanHistoryItemCategory(code, categoryId) {
+  const entry = state.eanHistory.find((item) => item.code === code);
+  if (!entry) {
+    return;
+  }
+
+  const resolvedCategoryId = getCategoryById(categoryId)?.id || getOtherCategory()?.id || 1;
+  if (entry.categoryId === resolvedCategoryId) {
+    return;
+  }
+
+  entry.categoryId = resolvedCategoryId;
+  persistState();
+  renderEanHistoryItems();
+}
+
+function deleteEanHistoryItem(code) {
+  const entry = state.eanHistory.find((item) => item.code === code);
+  if (!entry) {
+    return;
+  }
+
+  if (!window.confirm(t("historyDeleteConfirm", { name: entry.name }))) {
+    return;
+  }
+
+  state.eanHistory = state.eanHistory.filter((item) => item.code !== code);
+  persistState();
+  renderEanHistoryItems();
+  showToast(t("historyDeletedToast"));
 }
 
 function getSortedCategories() {
