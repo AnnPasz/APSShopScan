@@ -2,6 +2,7 @@ const STORAGE_KEYS = {
   shoppingItems: "aps-shopping-items",
   manualItems: "aps-manual-items",
   manualNextId: "aps-manual-next-id",
+  eanHistory: "aps-ean-history",
   eanLookupCache: "aps-ean-lookup-cache",
   language: "aps-language",
   eanSearchApiToken: "aps-ean-search-api-token",
@@ -16,6 +17,7 @@ const TRANSLATIONS = {
     appTitle: "Zarządzaj domową listą zakupów",
     navShopping: "Lista zakupów",
     navManual: "Produkty bez EAN",
+    navHistory: "Historia EAN",
     usbCardTitle: "Skaner USB",
     usbCardText: "Kliknij pole, zeskanuj kod i zatwierdź Enterem.",
     usbFocusButton: "Aktywuj",
@@ -54,6 +56,14 @@ const TRANSLATIONS = {
     manualEditPrompt: "Edytuj nazwę produktu bez EAN:",
     manualDeleteConfirm: "Usunąć ten produkt bez EAN?",
     manualNameRequired: "Nazwa produktu nie może być pusta.",
+    historyTitle: "Historia EAN",
+    historyHelp: "Wybierz wcześniej użyty kod EAN i dodaj produkt ponownie.",
+    historySearchPlaceholder: "Szukaj po nazwie produktu",
+    historyCategoryAll: "Wszystkie kategorie",
+    noHistoryItems: "Brak zapisanych kodów EAN.",
+    historyMeta: "EAN: {code} • Użyć: {count}",
+    historyShoppingMeta: "Z historii EAN {code}",
+    addedToShoppingToast: "Dodano do listy zakupów",
     printAllQr: "Drukuj wszystkie kody QR",
     printAllQrEmpty: "Brak produktów bez EAN do wydruku.",
     printAllTitle: "Drukuj wszystkie kody QR",
@@ -128,6 +138,7 @@ const TRANSLATIONS = {
     appTitle: "Manage your home shopping",
     navShopping: "Shopping List",
     navManual: "No-EAN Items",
+    navHistory: "EAN History",
     usbCardTitle: "USB Scanner",
     usbCardText: "Click the field, scan the code, then confirm with Enter.",
     usbFocusButton: "Activate",
@@ -166,6 +177,14 @@ const TRANSLATIONS = {
     manualEditPrompt: "Edit no-EAN product name:",
     manualDeleteConfirm: "Delete this no-EAN product?",
     manualNameRequired: "Product name cannot be empty.",
+    historyTitle: "EAN History",
+    historyHelp: "Pick a previously used EAN and add the product again.",
+    historySearchPlaceholder: "Search by product name",
+    historyCategoryAll: "All categories",
+    noHistoryItems: "No saved EAN codes yet.",
+    historyMeta: "EAN: {code} • Uses: {count}",
+    historyShoppingMeta: "From EAN history {code}",
+    addedToShoppingToast: "Added to shopping list",
     printAllQr: "Print all QR codes",
     printAllQrEmpty: "No no-EAN products to print.",
     printAllTitle: "Print all QR codes",
@@ -239,6 +258,7 @@ const TRANSLATIONS = {
 const state = {
   shoppingItems: [],
   manualItems: [],
+  eanHistory: [],
   manualNextId: 1000,
   scanning: false,
   scannerInstance: null,
@@ -248,7 +268,9 @@ const state = {
   eanSearchApiToken: null,
   eanSearchQueriesUsed: 0,
   categories: [],
-  nextCategoryId: 1
+  nextCategoryId: 1,
+  historySearch: "",
+  historyCategoryFilter: "all"
 };
 
 const scannerAutoTrigger = {
@@ -256,6 +278,8 @@ const scannerAutoTrigger = {
   minChars: 5,
   triggerDelay: 180
 };
+
+let toastTimeout = null;
 
 const CATEGORY_COLOR_PALETTE = [
   "#b9ff35", "#7ed957", "#45d88c", "#35c2ff", "#7f5bff",
@@ -283,8 +307,10 @@ const elements = {
   apiSettingsBtn: document.getElementById("api-settings-btn"),
   navShopping: document.getElementById("nav-shopping"),
   navManual: document.getElementById("nav-manual"),
+  navHistory: document.getElementById("nav-history"),
   shoppingView: document.getElementById("shopping-view"),
   manualView: document.getElementById("manual-view"),
+  historyView: document.getElementById("history-view"),
   usbCardTitle: document.getElementById("usb-card-title"),
   usbCardText: document.getElementById("usb-card-text"),
   usbCameraBtn: document.getElementById("usb-camera-btn"),
@@ -300,6 +326,11 @@ const elements = {
   manualHelp: document.getElementById("manual-help"),
   manualPrintAllBtn: document.getElementById("manual-print-all-btn"),
   manualItems: document.getElementById("manual-items"),
+  historyTitle: document.getElementById("history-title"),
+  historyHelp: document.getElementById("history-help"),
+  historySearch: document.getElementById("history-search"),
+  historyCategoryFilter: document.getElementById("history-category-filter"),
+  historyItems: document.getElementById("history-items"),
   lookupStatus: document.getElementById("lookup-status"),
   scannerModal: document.getElementById("scanner-modal"),
   scannerTitle: document.getElementById("scanner-title"),
@@ -334,7 +365,8 @@ const elements = {
   newCategoryPalette: document.getElementById("new-category-palette"),
   newCategoryColorToggle: document.getElementById("new-category-color-toggle"),
   newCategoryColorPreview: document.getElementById("new-category-color-preview"),
-  addCategoryBtn: document.getElementById("add-category-btn")
+  addCategoryBtn: document.getElementById("add-category-btn"),
+  toast: document.getElementById("toast")
 };
 
 init();
@@ -355,11 +387,14 @@ function bindEvents() {
   bindTopActionButtons();
   elements.navShopping.addEventListener("click", () => showView("shopping"));
   elements.navManual.addEventListener("click", () => showView("manual"));
+  elements.navHistory.addEventListener("click", () => showView("history"));
   elements.languageToggle.addEventListener("click", toggleLanguage);
   elements.usbCameraBtn.addEventListener("click", openScanner);
   elements.closeScanBtn.addEventListener("click", closeScanner);
   elements.manualForm.addEventListener("submit", onAddManualItem);
   elements.manualPrintAllBtn.addEventListener("click", printAllManualQrs);
+  elements.historySearch.addEventListener("input", onHistorySearchChange);
+  elements.historyCategoryFilter.addEventListener("change", onHistoryCategoryFilterChange);
   elements.confirmScanAdd.addEventListener("click", confirmPendingScannedItem);
   elements.confirmScanCancel.addEventListener("click", clearPendingScannedItem);
   elements.confirmScanCancelTop.addEventListener("click", clearPendingScannedItem);
@@ -394,6 +429,7 @@ function bindTopActionButtons() {
 function loadState() {
   state.shoppingItems = readJson(STORAGE_KEYS.shoppingItems, []);
   state.manualItems = readJson(STORAGE_KEYS.manualItems, []);
+  state.eanHistory = readJson(STORAGE_KEYS.eanHistory, []);
   state.eanLookupCache = readJson(STORAGE_KEYS.eanLookupCache, {});
 
   const nextId = Number(localStorage.getItem(STORAGE_KEYS.manualNextId));
@@ -427,6 +463,8 @@ function loadState() {
   state.nextCategoryId = state.categories.length ? Math.max(...state.categories.map(c => c.id)) + 1 : 1;
   ensureManualDefaultCategory();
   normalizeManualItemsCategories();
+  normalizeEanHistoryCategories();
+  seedEanHistoryFromShoppingItems();
 
   hydrateEanSearchTokenFromUrl();
 }
@@ -434,6 +472,7 @@ function loadState() {
 function persistState() {
   localStorage.setItem(STORAGE_KEYS.shoppingItems, JSON.stringify(state.shoppingItems));
   localStorage.setItem(STORAGE_KEYS.manualItems, JSON.stringify(state.manualItems));
+  localStorage.setItem(STORAGE_KEYS.eanHistory, JSON.stringify(state.eanHistory));
   localStorage.setItem(STORAGE_KEYS.manualNextId, String(state.manualNextId));
   localStorage.setItem(STORAGE_KEYS.eanLookupCache, JSON.stringify(state.eanLookupCache));
   localStorage.setItem(STORAGE_KEYS.language, state.language);
@@ -490,6 +529,7 @@ function applyLanguage() {
   elements.apiSettingsBtn.title = t("apiSettingsButton");
   elements.navShopping.textContent = t("navShopping");
   elements.navManual.textContent = t("navManual");
+  elements.navHistory.textContent = t("navHistory");
   elements.usbCardTitle.textContent = t("usbCardTitle");
   elements.usbCardText.textContent = t("usbCardText");
   elements.usbFocusBtn.textContent = t("usbFocusButton");
@@ -503,6 +543,9 @@ function applyLanguage() {
   elements.manualSubmitBtn.textContent = t("manualSubmit");
   elements.manualHelp.textContent = t("manualHelp");
   elements.manualPrintAllBtn.textContent = t("printAllQr");
+  elements.historyTitle.textContent = t("historyTitle");
+  elements.historyHelp.textContent = t("historyHelp");
+  elements.historySearch.placeholder = t("historySearchPlaceholder");
   elements.scannerTitle.textContent = t("scannerTitle");
   elements.closeScanBtn.textContent = t("scannerCancel");
   elements.scanStatus.textContent = state.scanning ? t("scannerRunning") : t("scannerDefaultStatus");
@@ -536,6 +579,7 @@ function applyLanguage() {
   renderCategoriesInUI();
   renderCategorySelect();
   renderManualCategorySelect();
+  renderHistoryCategoryFilter();
 }
 
 function toggleLanguage() {
@@ -549,10 +593,14 @@ function toggleLanguage() {
 
 function showView(view) {
   const isShopping = view === "shopping";
+  const isManual = view === "manual";
+  const isHistory = view === "history";
   elements.shoppingView.classList.toggle("hidden", !isShopping);
-  elements.manualView.classList.toggle("hidden", isShopping);
+  elements.manualView.classList.toggle("hidden", !isManual);
+  elements.historyView.classList.toggle("hidden", !isHistory);
   elements.navShopping.classList.toggle("active", isShopping);
-  elements.navManual.classList.toggle("active", !isShopping);
+  elements.navManual.classList.toggle("active", isManual);
+  elements.navHistory.classList.toggle("active", isHistory);
 }
 
 function setLookupStatusDefault() {
@@ -737,6 +785,184 @@ function readJson(key, fallback) {
 function renderAll() {
   renderShoppingList();
   renderManualItems();
+  renderHistoryCategoryFilter();
+  renderEanHistoryItems();
+}
+
+function onHistorySearchChange(event) {
+  state.historySearch = String(event.currentTarget.value || "").trim();
+  renderEanHistoryItems();
+}
+
+function onHistoryCategoryFilterChange(event) {
+  state.historyCategoryFilter = event.currentTarget.value || "all";
+  renderEanHistoryItems();
+}
+
+function normalizeEanHistoryCategories() {
+  const fallbackCategoryId = getOtherCategory()?.id || 1;
+  let hasChanges = false;
+
+  state.eanHistory = state.eanHistory
+    .filter((entry) => entry && entry.code && entry.name)
+    .map((entry) => {
+      const parsedCategoryId = Number(entry.categoryId);
+      const resolvedCategoryId = getCategoryById(parsedCategoryId) ? parsedCategoryId : fallbackCategoryId;
+      const parsedCount = Number(entry.count);
+      const parsedLastUsedAt = Number(entry.lastUsedAt);
+      const normalized = {
+        code: String(entry.code),
+        name: String(entry.name),
+        categoryId: resolvedCategoryId,
+        count: Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : 1,
+        lastUsedAt: Number.isFinite(parsedLastUsedAt) && parsedLastUsedAt > 0 ? parsedLastUsedAt : Date.now()
+      };
+
+      if (
+        normalized.categoryId !== entry.categoryId
+        || normalized.count !== entry.count
+        || normalized.lastUsedAt !== entry.lastUsedAt
+      ) {
+        hasChanges = true;
+      }
+
+      return normalized;
+    });
+
+  if (hasChanges) {
+    persistState();
+  }
+}
+
+function rememberEanHistoryItem({ code, name, categoryId }) {
+  const normalizedCode = String(code || "").trim();
+  const normalizedName = String(name || "").trim();
+  if (!normalizedCode || !normalizedName) {
+    return;
+  }
+
+  const resolvedCategoryId = getCategoryById(Number(categoryId))?.id || getOtherCategory()?.id || 1;
+  const now = Date.now();
+  const existingIndex = state.eanHistory.findIndex((entry) => entry.code === normalizedCode);
+
+  if (existingIndex >= 0) {
+    const existing = state.eanHistory[existingIndex];
+    state.eanHistory[existingIndex] = {
+      ...existing,
+      name: normalizedName,
+      categoryId: resolvedCategoryId,
+      count: (Number(existing.count) || 0) + 1,
+      lastUsedAt: now
+    };
+  } else {
+    state.eanHistory.push({
+      code: normalizedCode,
+      name: normalizedName,
+      categoryId: resolvedCategoryId,
+      count: 1,
+      lastUsedAt: now
+    });
+  }
+}
+
+function renderHistoryCategoryFilter() {
+  if (!elements.historyCategoryFilter) {
+    return;
+  }
+
+  const allowedValues = new Set(["all", ...getSortedCategories().map((category) => String(category.id))]);
+  if (!allowedValues.has(String(state.historyCategoryFilter))) {
+    state.historyCategoryFilter = "all";
+  }
+
+  const options = [
+    `<option value="all">${escapeHtml(t("historyCategoryAll"))}</option>`,
+    ...getSortedCategories().map((category) => {
+      const isSelected = String(category.id) === String(state.historyCategoryFilter);
+      return `<option value="${category.id}" ${isSelected ? "selected" : ""}>${escapeHtml(category.name)}</option>`;
+    })
+  ];
+
+  elements.historyCategoryFilter.innerHTML = options.join("");
+}
+
+function getFilteredEanHistory() {
+  const searchQuery = state.historySearch.trim().toLowerCase();
+  const categoryFilter = String(state.historyCategoryFilter || "all");
+
+  return state.eanHistory
+    .slice()
+    .sort((leftItem, rightItem) => (rightItem.lastUsedAt || 0) - (leftItem.lastUsedAt || 0))
+    .filter((entry) => {
+      const matchesSearch = !searchQuery || String(entry.name).toLowerCase().includes(searchQuery);
+      const matchesCategory = categoryFilter === "all" || String(entry.categoryId) === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
+}
+
+function renderEanHistoryItems() {
+  if (!elements.historyItems) {
+    return;
+  }
+
+  const filteredItems = getFilteredEanHistory();
+  if (!filteredItems.length) {
+    elements.historyItems.innerHTML = `<li class="item-card">${escapeHtml(t("noHistoryItems"))}</li>`;
+    return;
+  }
+
+  elements.historyItems.innerHTML = filteredItems
+    .map((entry) => {
+      const category = getCategoryById(entry.categoryId) || getOtherCategory();
+      const categoryColor = category ? category.color : "#9aa3c6";
+      const categoryName = category ? category.name : t("categoryOther");
+
+      return `
+        <li class="item-card">
+          <div class="item-top">
+            <div>
+              <div class="item-name">${escapeHtml(entry.name)}</div>
+              <div class="item-meta">${escapeHtml(t("historyMeta", { code: entry.code, count: entry.count }))}</div>
+              <div class="item-category-badge" style="background-color: ${escapeHtml(categoryColor)}20; border: 1px solid ${escapeHtml(categoryColor)}; color: ${escapeHtml(categoryColor)};">
+                <span class="category-dot" style="background-color: ${escapeHtml(categoryColor)}"></span>
+                ${escapeHtml(categoryName)}
+              </div>
+            </div>
+          </div>
+          <div class="item-controls">
+            <button class="small-btn" data-history-add="${escapeHtml(entry.code)}">${escapeHtml(t("addToList"))}</button>
+          </div>
+        </li>
+      `;
+    })
+    .join("");
+
+  elements.historyItems.querySelectorAll("[data-history-add]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const code = String(button.dataset.historyAdd || "");
+      const entry = state.eanHistory.find((item) => item.code === code);
+      if (!entry) {
+        return;
+      }
+
+      addShoppingItem({
+        name: entry.name,
+        meta: t("historyShoppingMeta", { code: entry.code }),
+        source: "ean-history",
+        sourceCode: entry.code,
+        categoryId: entry.categoryId
+      });
+
+      rememberEanHistoryItem({
+        code: entry.code,
+        name: entry.name,
+        categoryId: entry.categoryId
+      });
+
+      persistState();
+      renderEanHistoryItems();
+    });
+  });
 }
 
 function getSortedCategories() {
@@ -1426,7 +1652,16 @@ function confirmPendingScannedItem() {
     categoryId
   });
 
+  if (state.pendingScannedItem.source === "ean") {
+    rememberEanHistoryItem({
+      code: state.pendingScannedItem.sourceCode,
+      name: confirmedName,
+      categoryId
+    });
+  }
+
   persistState();
+  renderEanHistoryItems();
   clearPendingScannedItem();
   setUsbStatus(t("usbReady"));
 }
@@ -1472,8 +1707,9 @@ function mapQrToManualItem(payload) {
   return state.manualItems.find((item) => item.id === id) || null;
 }
 
-function addShoppingItem(data) {
+function addShoppingItem(data, options = {}) {
   const categoryId = data.categoryId || getOtherCategory()?.id || 1;
+  const shouldShowToast = options.showToast !== false;
   
   state.shoppingItems.push({
     id: crypto.randomUUID(),
@@ -1489,6 +1725,9 @@ function addShoppingItem(data) {
 
   persistState();
   renderShoppingList();
+  if (shouldShowToast) {
+    showToast(t("addedToShoppingToast"));
+  }
 }
 
 function onAddManualItem(event) {
@@ -1578,7 +1817,6 @@ function renderManualItems() {
         sourceCode: String(item.id),
         categoryId: item.categoryId
       });
-      showView("shopping");
     });
   });
 
@@ -1759,6 +1997,26 @@ function setUsbStatus(message) {
   elements.usbStatus.textContent = message;
 }
 
+function showToast(message) {
+  if (!elements.toast) {
+    return;
+  }
+
+  if (toastTimeout) {
+    clearTimeout(toastTimeout);
+    toastTimeout = null;
+  }
+
+  elements.toast.textContent = message;
+  elements.toast.classList.remove("hidden");
+  elements.toast.classList.add("visible");
+
+  toastTimeout = setTimeout(() => {
+    elements.toast.classList.remove("visible");
+    elements.toast.classList.add("hidden");
+  }, 2200);
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -1839,6 +2097,38 @@ function normalizeManualItemsCategories() {
   }
 }
 
+function seedEanHistoryFromShoppingItems() {
+  const knownCodes = new Set(state.eanHistory.map((entry) => String(entry.code)));
+  let hasChanges = false;
+
+  state.shoppingItems.forEach((item) => {
+    if (item?.source !== "ean") {
+      return;
+    }
+
+    const code = String(item.sourceCode || "").trim();
+    const name = String(item.name || "").trim();
+    if (!code || !name || knownCodes.has(code)) {
+      return;
+    }
+
+    state.eanHistory.push({
+      code,
+      name,
+      categoryId: getCategoryById(Number(item.categoryId))?.id || getOtherCategory()?.id || 1,
+      count: 1,
+      lastUsedAt: Number(item.createdAt) || Date.now()
+    });
+
+    knownCodes.add(code);
+    hasChanges = true;
+  });
+
+  if (hasChanges) {
+    persistState();
+  }
+}
+
 function onAddCategory() {
   const name = elements.newCategoryName.value.trim();
   const color = elements.newCategoryColor.value || CATEGORY_COLOR_PALETTE[0];
@@ -1867,6 +2157,8 @@ function onAddCategory() {
   renderCategoriesInUI();
   renderCategorySelect();
   renderManualCategorySelect();
+  renderHistoryCategoryFilter();
+  renderEanHistoryItems();
   setUsbStatus(t("categoryAdded", { name }));
 }
 
@@ -1899,6 +2191,12 @@ function deleteCategory(categoryId) {
         item.categoryId = otherCategory.id;
       }
     });
+
+    state.eanHistory.forEach((item) => {
+      if (item.categoryId === categoryId) {
+        item.categoryId = otherCategory.id;
+      }
+    });
   }
 
   state.categories = state.categories.filter(c => c.id !== categoryId);
@@ -1909,6 +2207,8 @@ function deleteCategory(categoryId) {
   renderCategoriesInUI();
   renderCategorySelect();
   renderManualCategorySelect();
+  renderHistoryCategoryFilter();
+  renderEanHistoryItems();
   setUsbStatus(t("categoryDeleted", { name: category.name }));
 }
 
@@ -1921,6 +2221,7 @@ function updateCategoryColor(categoryId, newColor) {
 
   renderShoppingList();
   renderManualItems();
+  renderEanHistoryItems();
   renderCategoriesInUI();
   setUsbStatus(t("categoryColorUpdated", { name: category.name }));
 }
@@ -1963,8 +2264,10 @@ function saveCategoryEdit(categoryId) {
   cancelCategoryEdit();
   renderShoppingList();
   renderManualItems();
+  renderEanHistoryItems();
   renderCategorySelect();
   renderManualCategorySelect();
+  renderHistoryCategoryFilter();
 }
 
 function toggleEditCategoryPalette() {
@@ -1997,9 +2300,11 @@ function moveCategory(categoryId, direction) {
   persistState();
   renderShoppingList();
   renderManualItems();
+  renderEanHistoryItems();
   renderCategoriesInUI();
   renderCategorySelect();
   renderManualCategorySelect();
+  renderHistoryCategoryFilter();
 
   const movedCategory = getCategoryById(categoryId);
   if (movedCategory) {

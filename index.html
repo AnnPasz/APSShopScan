@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>APS Lista Zakupów</title>
-    <link rel="stylesheet" href="./styles.css?v=20260514-2" />
+    <link rel="stylesheet" href="./styles.css?v=20260514-3" />
   </head>
   <body>
     <main class="app-shell">
@@ -17,6 +17,7 @@
         <nav class="top-nav">
           <button id="nav-shopping" class="nav-btn active">Lista zakupów</button>
           <button id="nav-manual" class="nav-btn">Produkty bez EAN</button>
+          <button id="nav-history" class="nav-btn">Historia EAN</button>
         </nav>
       </header>
 
@@ -66,7 +67,19 @@
 
         <ul id="manual-items" class="manual-items"></ul>
       </section>
+
+      <section id="history-view" class="view hidden">
+        <h2 id="history-title">Historia EAN</h2>
+        <p id="history-help" class="helper-text">Wybierz wcześniej użyty kod EAN i dodaj produkt ponownie.</p>
+        <div class="history-filters">
+          <input id="history-search" class="confirm-input" type="text" placeholder="Szukaj po nazwie produktu" />
+          <select id="history-category-filter" class="confirm-input confirm-select"></select>
+        </div>
+        <ul id="history-items" class="manual-items"></ul>
+      </section>
     </main>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
     <dialog id="scanner-modal" class="scanner-modal">
       <div class="scanner-header">
@@ -134,6 +147,6 @@
     </dialog>
 
     <script src="https://unpkg.com/html5-qrcode" defer></script>
-    <script src="./app.js?v=20260514-2" defer></script>
+    <script src="./app.js?v=20260514-3" defer></script>
   </body>
 </html>
