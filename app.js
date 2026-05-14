@@ -46,6 +46,8 @@ const TRANSLATIONS = {
     manualTitle: "Dodaj produkt bez EAN",
     manualPlaceholder: "np. Banany",
     manualSubmit: "Dodaj produkt bez EAN",
+    manualCategoryLabel: "Kategoria dla produktu bez EAN",
+    manualDefaultCategory: "Warzywa i owoce",
     manualHelp: "Każdy produkt dostaje ID i kod QR z treścią NOEAN:<id>.",
     manualEdit: "Edytuj",
     manualDelete: "Usuń",
@@ -156,6 +158,8 @@ const TRANSLATIONS = {
     manualTitle: "Add product without EAN",
     manualPlaceholder: "e.g. Bananas",
     manualSubmit: "Add no-EAN item",
+    manualCategoryLabel: "No-EAN item category",
+    manualDefaultCategory: "Fruit & Veg",
     manualHelp: "Each product gets an ID and QR content NOEAN:<id>.",
     manualEdit: "Edit",
     manualDelete: "Delete",
@@ -291,6 +295,7 @@ const elements = {
   manualTitle: document.getElementById("manual-title"),
   manualForm: document.getElementById("manual-form"),
   manualName: document.getElementById("manual-name"),
+  manualCategory: document.getElementById("manual-category"),
   manualSubmitBtn: document.getElementById("manual-submit-btn"),
   manualHelp: document.getElementById("manual-help"),
   manualPrintAllBtn: document.getElementById("manual-print-all-btn"),
@@ -420,6 +425,8 @@ function loadState() {
 
   // Calculate nextCategoryId
   state.nextCategoryId = state.categories.length ? Math.max(...state.categories.map(c => c.id)) + 1 : 1;
+  ensureManualDefaultCategory();
+  normalizeManualItemsCategories();
 
   hydrateEanSearchTokenFromUrl();
 }
@@ -491,6 +498,8 @@ function applyLanguage() {
   elements.usbScanInput.placeholder = t("usbPlaceholder");
   elements.manualTitle.textContent = t("manualTitle");
   elements.manualName.placeholder = t("manualPlaceholder");
+  elements.manualCategory.setAttribute("aria-label", t("manualCategoryLabel"));
+  elements.manualCategory.title = t("manualCategoryLabel");
   elements.manualSubmitBtn.textContent = t("manualSubmit");
   elements.manualHelp.textContent = t("manualHelp");
   elements.manualPrintAllBtn.textContent = t("printAllQr");
@@ -526,6 +535,7 @@ function applyLanguage() {
   }
   renderCategoriesInUI();
   renderCategorySelect();
+  renderManualCategorySelect();
 }
 
 function toggleLanguage() {
@@ -828,7 +838,7 @@ function renderShoppingList() {
     })
     .join("");
 
-  elements.shoppingList.querySelectorAll("[data-action]").forEach((button) => {
+  elements.shoppingList.querySelectorAll("button[data-action]").forEach((button) => {
     button.addEventListener("click", onShoppingAction);
   });
 
@@ -1145,7 +1155,8 @@ async function handleScanResult(rawValue, format) {
       name: mapped.name,
       meta: t("manualItemMeta", { id: mapped.id }),
       source: "manual",
-      sourceCode: String(mapped.id)
+      sourceCode: String(mapped.id),
+      categoryId: mapped.categoryId
     });
 
     return true;
@@ -1486,6 +1497,8 @@ function addShoppingItem(data) {
 function onAddManualItem(event) {
   event.preventDefault();
   const name = elements.manualName.value.trim();
+  const selectedCategoryId = parseInt(elements.manualCategory.value, 10);
+  const categoryId = getCategoryById(selectedCategoryId)?.id || getManualDefaultCategoryId();
   if (!name) {
     return;
   }
@@ -1493,12 +1506,14 @@ function onAddManualItem(event) {
   const item = {
     id: state.manualNextId,
     name,
+    categoryId,
     createdAt: Date.now()
   };
 
   state.manualItems.push(item);
   state.manualNextId += 1;
   elements.manualName.value = "";
+  renderManualCategorySelect(getManualDefaultCategoryId());
 
   persistState();
   renderManualItems();
@@ -1518,6 +1533,9 @@ function renderManualItems() {
     .map((item) => {
       const payload = `NOEAN:${item.id}`;
       const qrUrl = buildQrUrl(payload);
+      const category = getCategoryById(item.categoryId) || getCategoryById(getManualDefaultCategoryId()) || getOtherCategory();
+      const categoryColor = category ? category.color : "#9aa3c6";
+      const categoryName = category ? category.name : t("categoryOther");
 
       return `
         <li class="item-card">
@@ -1525,10 +1543,19 @@ function renderManualItems() {
             <div>
               <div class="item-name">${escapeHtml(item.name)}</div>
               <div class="item-meta">${escapeHtml(t("manualItemMeta", { id: item.id }))}</div>
+              <div class="item-category-badge" style="background-color: ${escapeHtml(categoryColor)}20; border: 1px solid ${escapeHtml(categoryColor)}; color: ${escapeHtml(categoryColor)};">
+                <span class="category-dot" style="background-color: ${escapeHtml(categoryColor)}"></span>
+                ${escapeHtml(categoryName)}
+              </div>
             </div>
           </div>
           <img class="manual-qr" alt="QR for ${escapeHtml(item.name)}" src="${qrUrl}" />
           <div class="item-controls">
+            <select class="small-btn category-select manual-item-category-select" data-manual-category="${item.id}">
+              ${getSortedCategories()
+                .map(cat => `<option value="${cat.id}" ${cat.id === category?.id ? "selected" : ""}>${escapeHtml(cat.name)}</option>`)
+                .join("")}
+            </select>
             <button class="small-btn" data-manual-add="${item.id}">${escapeHtml(t("addToList"))}</button>
             <button class="small-btn" data-manual-print="${item.id}">${escapeHtml(t("printQr"))}</button>
             <button class="small-btn" data-manual-edit="${item.id}">${escapeHtml(t("manualEdit"))}</button>
@@ -1551,9 +1578,18 @@ function renderManualItems() {
         name: item.name,
         meta: t("manualItemMeta", { id: item.id }),
         source: "manual",
-        sourceCode: String(item.id)
+        sourceCode: String(item.id),
+        categoryId: item.categoryId
       });
       showView("shopping");
+    });
+  });
+
+  elements.manualItems.querySelectorAll("[data-manual-category]").forEach((select) => {
+    select.addEventListener("change", () => {
+      const id = Number(select.dataset.manualCategory);
+      const categoryId = Number(select.value);
+      updateManualItemCategory(id, categoryId);
     });
   });
 
@@ -1602,6 +1638,17 @@ function editManualItem(id) {
   }
 
   item.name = trimmedName;
+  persistState();
+  renderManualItems();
+}
+
+function updateManualItemCategory(id, categoryId) {
+  const item = state.manualItems.find((entry) => entry.id === id);
+  if (!item) {
+    return;
+  }
+
+  item.categoryId = getCategoryById(categoryId)?.id || getManualDefaultCategoryId();
   persistState();
   renderManualItems();
 }
@@ -1743,6 +1790,58 @@ function getOtherCategory() {
   return state.categories.find(c => c.id === 1) || state.categories[0];
 }
 
+function getManualDefaultCategoryNames() {
+  return [TRANSLATIONS.pl.manualDefaultCategory, TRANSLATIONS.en.manualDefaultCategory]
+    .filter(Boolean)
+    .map((name) => name.trim().toLowerCase());
+}
+
+function ensureManualDefaultCategory() {
+  const defaultCategoryNames = getManualDefaultCategoryNames();
+  const existingCategory = state.categories.find((category) => defaultCategoryNames.includes(String(category.name || "").trim().toLowerCase()));
+
+  if (existingCategory) {
+    return existingCategory;
+  }
+
+  const category = {
+    id: state.nextCategoryId,
+    name: TRANSLATIONS.pl.manualDefaultCategory,
+    color: "#69c16f",
+    order: state.categories.length
+  };
+
+  state.categories.push(category);
+  state.nextCategoryId += 1;
+  persistState();
+  return category;
+}
+
+function getManualDefaultCategoryId() {
+  return ensureManualDefaultCategory()?.id || getOtherCategory()?.id || 1;
+}
+
+function normalizeManualItemsCategories() {
+  const defaultCategoryId = getManualDefaultCategoryId();
+  let hasChanges = false;
+
+  state.manualItems = state.manualItems.map((item) => {
+    if (getCategoryById(item.categoryId)) {
+      return item;
+    }
+
+    hasChanges = true;
+    return {
+      ...item,
+      categoryId: defaultCategoryId
+    };
+  });
+
+  if (hasChanges) {
+    persistState();
+  }
+}
+
 function onAddCategory() {
   const name = elements.newCategoryName.value.trim();
   const color = elements.newCategoryColor.value || CATEGORY_COLOR_PALETTE[0];
@@ -1767,8 +1866,10 @@ function onAddCategory() {
   categoryUiState.addPaletteOpen = false;
 
   renderNewCategoryPalette();
+  renderManualItems();
   renderCategoriesInUI();
   renderCategorySelect();
+  renderManualCategorySelect();
   setUsbStatus(t("categoryAdded", { name }));
 }
 
@@ -1795,14 +1896,22 @@ function deleteCategory(categoryId) {
         item.categoryId = otherCategory.id;
       }
     });
+
+    state.manualItems.forEach(item => {
+      if (item.categoryId === categoryId) {
+        item.categoryId = otherCategory.id;
+      }
+    });
   }
 
   state.categories = state.categories.filter(c => c.id !== categoryId);
   persistState();
 
   renderShoppingList();
+  renderManualItems();
   renderCategoriesInUI();
   renderCategorySelect();
+  renderManualCategorySelect();
   setUsbStatus(t("categoryDeleted", { name: category.name }));
 }
 
@@ -1814,6 +1923,7 @@ function updateCategoryColor(categoryId, newColor) {
   persistState();
 
   renderShoppingList();
+  renderManualItems();
   renderCategoriesInUI();
   setUsbStatus(t("categoryColorUpdated", { name: category.name }));
 }
@@ -1855,7 +1965,9 @@ function saveCategoryEdit(categoryId) {
   persistState();
   cancelCategoryEdit();
   renderShoppingList();
+  renderManualItems();
   renderCategorySelect();
+  renderManualCategorySelect();
 }
 
 function toggleEditCategoryPalette() {
@@ -1887,8 +1999,10 @@ function moveCategory(categoryId, direction) {
 
   persistState();
   renderShoppingList();
+  renderManualItems();
   renderCategoriesInUI();
   renderCategorySelect();
+  renderManualCategorySelect();
 
   const movedCategory = getCategoryById(categoryId);
   if (movedCategory) {
@@ -2078,5 +2192,19 @@ function renderCategorySelect() {
       const isSelected = category.id === selectedId;
       return `<option value="${category.id}" ${isSelected ? "selected" : ""}>${escapeHtml(category.name)}</option>`;
     })
+    .join("");
+}
+
+function renderManualCategorySelect(selectedCategoryId = null) {
+  if (!elements.manualCategory) {
+    return;
+  }
+
+  const defaultCategoryId = getManualDefaultCategoryId();
+  const currentCategoryId = selectedCategoryId ?? parseInt(elements.manualCategory.value, 10);
+  const resolvedCategoryId = getCategoryById(currentCategoryId) ? currentCategoryId : defaultCategoryId;
+
+  elements.manualCategory.innerHTML = getSortedCategories()
+    .map((category) => `<option value="${category.id}" ${category.id === resolvedCategoryId ? "selected" : ""}>${escapeHtml(category.name)}</option>`)
     .join("");
 }

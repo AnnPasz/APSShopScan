@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>APS Lista Zakupów</title>
-    <link rel="stylesheet" href="./styles.css?v=20260514-1" />
+    <link rel="stylesheet" href="./styles.css?v=20260514-2" />
   </head>
   <body>
     <main class="app-shell">
@@ -55,7 +55,10 @@
       <section id="manual-view" class="view hidden">
         <h2 id="manual-title">Dodaj produkt bez EAN</h2>
         <form id="manual-form" class="manual-form">
-          <input id="manual-name" type="text" placeholder="np. Banany" required />
+          <div class="manual-form-fields">
+            <input id="manual-name" class="confirm-input manual-name-input" type="text" placeholder="np. Banany" required />
+            <select id="manual-category" class="confirm-input confirm-select manual-category-select"></select>
+          </div>
           <button id="manual-submit-btn" type="submit" class="primary-btn">Dodaj produkt bez EAN</button>
         </form>
         <p id="manual-help" class="helper-text">Każdy produkt dostaje ID i kod QR z treścią <code>NOEAN:&lt;id&gt;</code>.</p>
@@ -131,6 +134,6 @@
     </dialog>
 
     <script src="https://unpkg.com/html5-qrcode" defer></script>
-    <script src="./app.js?v=20260514-1" defer></script>
+    <script src="./app.js?v=20260514-2" defer></script>
   </body>
 </html>
