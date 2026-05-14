@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>APS Lista Zakupów</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260514-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -119,13 +119,14 @@
 
         <div class="add-category-form">
           <input id="new-category-name" class="confirm-input" type="text" placeholder="Nazwa kategorii" />
-          <input id="new-category-color" class="color-input" type="color" value="#b9ff35" title="Kolor kategorii" />
+          <input id="new-category-color" type="hidden" value="#b9ff35" />
+          <div id="new-category-palette" class="color-palette add-category-palette" aria-label="Paleta kolorów kategorii"></div>
           <button id="add-category-btn" class="primary-btn" type="button">Dodaj kategorię</button>
         </div>
       </div>
     </dialog>
 
     <script src="https://unpkg.com/html5-qrcode" defer></script>
-    <script src="./app.js" defer></script>
+    <script src="./app.js?v=20260514-1" defer></script>
   </body>
 </html>

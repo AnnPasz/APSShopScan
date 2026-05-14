@@ -237,6 +237,14 @@ const scannerAutoTrigger = {
   triggerDelay: 180
 };
 
+const CATEGORY_COLOR_PALETTE = [
+  "#b9ff35", "#7ed957", "#45d88c", "#35c2ff", "#7f5bff",
+  "#9aa3c6", "#ffc857", "#ff9f1c", "#ff8da1", "#ff6f86",
+  "#f4a261", "#e76f51", "#d62878", "#8338ec", "#3a86ff",
+  "#06d6a0", "#2a9d8f", "#8ac926", "#c0f000", "#f1fa8c",
+  "#adb5bd", "#6c757d", "#495057", "#264653", "#1d3557"
+];
+
 const elements = {
   brandLabel: document.getElementById("brand-label"),
   appTitle: document.getElementById("app-title"),
@@ -294,6 +302,7 @@ const elements = {
   categoriesList: document.getElementById("categories-list"),
   newCategoryName: document.getElementById("new-category-name"),
   newCategoryColor: document.getElementById("new-category-color"),
+  newCategoryPalette: document.getElementById("new-category-palette"),
   addCategoryBtn: document.getElementById("add-category-btn")
 };
 
@@ -303,6 +312,7 @@ function init() {
   loadState();
   bindEvents();
   applyLanguage();
+  renderNewCategoryPalette();
   renderAll();
   setLookupStatusDefault();
   setUsbStatus(t("usbWaiting"));
@@ -1654,7 +1664,7 @@ function getOtherCategory() {
 
 function onAddCategory() {
   const name = elements.newCategoryName.value.trim();
-  const color = elements.newCategoryColor.value || "#b9ff35";
+  const color = elements.newCategoryColor.value || CATEGORY_COLOR_PALETTE[0];
 
   if (!name) {
     return;
@@ -1672,8 +1682,9 @@ function onAddCategory() {
   persistState();
 
   elements.newCategoryName.value = "";
-  elements.newCategoryColor.value = "#b9ff35";
+  elements.newCategoryColor.value = CATEGORY_COLOR_PALETTE[0];
 
+  renderNewCategoryPalette();
   renderCategoriesInUI();
   renderCategorySelect();
   setUsbStatus(t("categoryAdded", { name }));
@@ -1738,7 +1749,9 @@ function renderCategoriesInUI() {
             <span class="category-name">${escapeHtml(category.name)}</span>
           </div>
           <div class="category-controls">
-            <input type="color" class="color-input category-color-input" value="${escapeHtml(category.color)}" data-category-id="${category.id}" ${isOther ? "disabled" : ""} />
+            <div class="color-palette category-palette ${isOther ? "is-disabled" : ""}" data-category-id="${category.id}">
+              ${buildColorPalette(category.color, "category", category.id, isOther)}
+            </div>
             <button class="small-btn danger category-delete-btn" data-category-id="${category.id}" ${isOther ? "disabled" : ""}>${escapeHtml(t("deleteCategory"))}</button>
           </div>
         </div>
@@ -1746,10 +1759,11 @@ function renderCategoriesInUI() {
     })
     .join("");
 
-  // Attach event listeners
-  elements.categoriesList.querySelectorAll(".category-color-input").forEach(input => {
-    input.addEventListener("change", (e) => {
-      updateCategoryColor(parseInt(e.target.dataset.categoryId), e.target.value);
+  elements.categoriesList.querySelectorAll(".category-palette-swatch").forEach(button => {
+    button.addEventListener("click", (event) => {
+      const categoryId = parseInt(event.currentTarget.dataset.categoryId);
+      const color = event.currentTarget.dataset.color;
+      updateCategoryColor(categoryId, color);
     });
   });
 
@@ -1758,6 +1772,42 @@ function renderCategoriesInUI() {
       deleteCategory(parseInt(e.target.dataset.categoryId));
     });
   });
+}
+
+function renderNewCategoryPalette() {
+  if (!elements.newCategoryPalette || !elements.newCategoryColor) {
+    return;
+  }
+
+  const selectedColor = elements.newCategoryColor.value || CATEGORY_COLOR_PALETTE[0];
+  elements.newCategoryPalette.innerHTML = buildColorPalette(selectedColor, "new");
+
+  elements.newCategoryPalette.querySelectorAll(".new-category-palette-swatch").forEach(button => {
+    button.addEventListener("click", (event) => {
+      const color = event.currentTarget.dataset.color;
+      elements.newCategoryColor.value = color;
+      renderNewCategoryPalette();
+    });
+  });
+}
+
+function buildColorPalette(selectedColor, paletteType, categoryId = null, disabled = false) {
+  return CATEGORY_COLOR_PALETTE.map((color) => {
+    const isSelected = color.toLowerCase() === String(selectedColor || "").toLowerCase();
+    const className = paletteType === "new" ? "new-category-palette-swatch" : "category-palette-swatch";
+    return `
+      <button
+        type="button"
+        class="palette-swatch ${className} ${isSelected ? "selected" : ""}"
+        style="background-color: ${escapeHtml(color)}"
+        data-color="${escapeHtml(color)}"
+        ${categoryId ? `data-category-id="${categoryId}"` : ""}
+        aria-label="${escapeHtml(color)}"
+        title="${escapeHtml(color)}"
+        ${disabled ? "disabled" : ""}
+      ></button>
+    `;
+  }).join("");
 }
 
 function renderCategorySelect() {
